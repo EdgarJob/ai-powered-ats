@@ -31,23 +31,46 @@ export interface Database {
       }
       org_credits: {
         Row: {
-          id: string
           org_id: string
           credits: number
           created_at: string
           updated_at: string
         }
         Insert: {
+          org_id: string
+          credits: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          org_id?: string
+          credits?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      users: {
+        Row: {
+          id: string
+          org_id: string
+          email: string
+          role: 'admin' | 'user'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
           id?: string
           org_id: string
-          credits?: number
+          email: string
+          role?: 'admin' | 'user'
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           org_id?: string
-          credits?: number
+          email?: string
+          role?: 'admin' | 'user'
           created_at?: string
           updated_at?: string
         }
@@ -69,7 +92,7 @@ export interface Database {
           org_id: string
           title: string
           description: string
-          requirements?: string[]
+          requirements: string[]
           status?: 'draft' | 'published' | 'closed'
           created_by: string
           created_at?: string
@@ -93,10 +116,10 @@ export interface Database {
           job_id: string
           full_name: string
           email: string
-          phone: string | null
+          phone?: string
           resume_url: string
           status: 'pending' | 'reviewed' | 'shortlisted' | 'rejected'
-          embedding: number[] | null
+          embedding: number[]
           created_at: string
           updated_at: string
         }
@@ -105,10 +128,10 @@ export interface Database {
           job_id: string
           full_name: string
           email: string
-          phone?: string | null
+          phone?: string
           resume_url: string
           status?: 'pending' | 'reviewed' | 'shortlisted' | 'rejected'
-          embedding?: number[] | null
+          embedding?: number[]
           created_at?: string
           updated_at?: string
         }
@@ -117,49 +140,54 @@ export interface Database {
           job_id?: string
           full_name?: string
           email?: string
-          phone?: string | null
+          phone?: string
           resume_url?: string
           status?: 'pending' | 'reviewed' | 'shortlisted' | 'rejected'
-          embedding?: number[] | null
+          embedding?: number[]
           created_at?: string
           updated_at?: string
         }
       }
       candidate_scores: {
         Row: {
-          id: string
           candidate_id: string
-          total_score: number
-          skills_score: number
-          experience_score: number
-          education_score: number
-          explanation: Json
+          job_id: string
+          score: number
           created_at: string
-          updated_at: string
         }
         Insert: {
-          id?: string
           candidate_id: string
-          total_score: number
-          skills_score: number
-          experience_score: number
-          education_score: number
-          explanation?: Json
+          job_id: string
+          score: number
           created_at?: string
-          updated_at?: string
         }
         Update: {
-          id?: string
           candidate_id?: string
-          total_score?: number
-          skills_score?: number
-          experience_score?: number
-          education_score?: number
-          explanation?: Json
+          job_id?: string
+          score?: number
           created_at?: string
-          updated_at?: string
         }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      match_candidates: {
+        Args: {
+          p_job_id: string
+          p_limit?: number
+        }
+        Returns: {
+          candidate_id: string
+          full_name: string
+          email: string
+          score: number
+        }[]
+      }
+    }
+    Enums: {
+      [_ in never]: never
     }
   }
 } 

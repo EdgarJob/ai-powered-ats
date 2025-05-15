@@ -64,7 +64,7 @@ export function AddJobForm() {
             setDescription('');
             setRequirements([]);
             setStatus('draft');
-            queryClient.invalidateQueries(['jobs']); // Refresh job list
+            queryClient.invalidateQueries({ queryKey: ['jobs'] }); // Refresh job list
         }
     };
 

@@ -10,17 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
-    "@mui/icons-material": "^7.1.0",
-    "@mui/material": "^7.1.0",
-    "@mui/x-data-grid": "^8.3.0",
-    "@supabase/supabase-js": "^2.49.4",
-    "@tanstack/react-query": "^5.76.1",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.0",
-    "uuid": "^11.1.0"
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.10",
+    "@mui/material": "^5.15.10",
+    "@mui/x-data-grid": "^6.19.4",
+    "@supabase/supabase-js": "^2.39.7",
+    "@tanstack/react-query": "^5.21.7",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.1",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

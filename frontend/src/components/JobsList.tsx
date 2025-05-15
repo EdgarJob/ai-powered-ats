@@ -4,6 +4,7 @@ import { Box, Typography, Chip, Button } from '@mui/material';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { AddJobForm } from './AddJobForm';
+import { AddCandidateForm } from './AddCandidateForm';
 
 const columns: GridColDef[] = [
     { field: 'title', headerName: 'Job Title', width: 300 },
@@ -52,26 +53,47 @@ export function JobsList() {
     const { data: jobs, isLoading, error } = useQuery({
         queryKey: ['jobs'],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('jobs')
-                .select('*')
-                .order('created_at', { ascending: false });
+            try {
+                const { data, error } = await supabase
+                    .from('jobs')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            return data.map(job => ({
-                ...job,
-                onView: (id: string) => navigate(`/jobs/${id}`)
-            }));
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                if (!data) {
+                    throw new Error('No data returned from the server');
+                }
+
+                return data.map(job => ({
+                    ...job,
+                    onView: (id: string) => navigate(`/jobs/${id}`)
+                }));
+            } catch (err) {
+                throw new Error(err instanceof Error ? err.message : 'An error occurred while fetching jobs');
+            }
         }
     });
 
     if (error) {
-        return <Typography color="error">Error loading jobs: {error.message}</Typography>;
+        return (
+            <Box sx={{ p: 3 }}>
+                <Typography color="error" variant="h6" gutterBottom>
+                    Error loading jobs
+                </Typography>
+                <Typography color="error">
+                    {error instanceof Error ? error.message : 'An unknown error occurred'}
+                </Typography>
+            </Box>
+        );
     }
 
     return (
         <Box sx={{ height: 400, width: '100%' }}>
             <AddJobForm />
+            <AddCandidateForm />
             <Typography variant="h4" gutterBottom>
                 Job Listings
             </Typography>

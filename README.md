@@ -1,71 +1,64 @@
-# AI-Powered Applicant Tracking System
+# AI Powered ATS
 
-An intelligent ATS that uses AI to analyze resumes, match candidates to jobs, and streamline the hiring process.
+A modern, open-source Applicant Tracking System (ATS) powered by AI. Built with React, Supabase, and modern web technologies.
 
-## Project Structure
+## Features
+- Job listing and management
+- Candidate tracking and scoring
+- Modern, responsive UI (Material-UI)
+- Supabase/Postgres backend
+- Easy to extend and customize
 
-```
-.
-├── frontend/     # React 18 + Vite frontend application
-├── edge/         # Supabase Edge Functions (TypeScript/Deno)
-├── api/          # FastAPI backend service
-└── infra/        # Terraform infrastructure code
-```
+## Tech Stack
+- **Frontend:** React, TypeScript, Material-UI, React Query
+- **Backend:** Supabase (Postgres, Auth, Storage)
+- **CI/CD:** GitHub Actions
+- **Dev Tools:** Vite, Yarn, Docker (for Supabase)
 
-## Prerequisites
+## Getting Started
 
-- Node.js 20+
-- Python 3.11+
-- pnpm
-- Supabase CLI
-- Terraform
-- Docker & Docker Compose
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v18+ recommended)
+- [Yarn](https://yarnpkg.com/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for local Supabase)
+- [Supabase CLI](https://supabase.com/docs/guides/cli)
 
-## Development Setup
-
-1. Install dependencies:
+### Setup
+1. **Clone the repo:**
    ```bash
-   pnpm install              # Install Node.js dependencies
-   cd api
-   python -m venv venv      # Create Python virtual environment
-   source venv/bin/activate # Activate virtual environment
-   pip install -r requirements.txt
+   git clone https://github.com/EdgarJob/ai-powered-ats.git
+   cd ai-powered-ats
    ```
-
-2. Set up environment variables:
+2. **Start Supabase locally:**
    ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
+   supabase start
    ```
-
-3. Start the development servers:
+3. **Seed the database (optional):**
    ```bash
-   # In separate terminals:
-   pnpm --filter frontend dev  # Start frontend
-   pnpm --filter edge dev      # Start edge functions
-   uvicorn api.main:app --reload  # Start FastAPI server
+   PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f sample_data.sql
    ```
-
-4. For local development with Supabase:
+4. **Install frontend dependencies:**
    ```bash
-   supabase start  # Start local Supabase
+   cd frontend
+   yarn install
    ```
+5. **Run the frontend app:**
+   ```bash
+   yarn dev
+   ```
+6. **Open your browser:**
+   - Go to [http://localhost:5173](http://localhost:5173)
 
-## Testing
-
-```bash
-pnpm test         # Run all tests
-pnpm lint         # Run linters
-```
-
-## Deployment
-
-The project uses GitHub Actions for CI/CD. Pushing to main will:
-1. Run tests and linters
-2. Deploy edge functions to Supabase
-3. Deploy frontend to Netlify
-4. Apply Terraform changes
+## Contributing
+- Fork the repo and create a feature branch
+- Make your changes (add features, fix bugs, improve docs)
+- Open a pull request!
 
 ## License
+MIT
 
-MIT 
+---
+
+**Learning Reflection:**
+- This project is a great way to learn full-stack development, CI/CD, and modern web best practices.
+- You can reuse these patterns for any web app: forms, database, authentication, and deployment. 
