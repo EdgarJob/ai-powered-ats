@@ -1,60 +1,80 @@
-# AI Powered ATS
+# AI-Powered Applicant Tracking System (ATS)
 
-A modern, open-source Applicant Tracking System (ATS) powered by AI. Built with React, Supabase, and modern web technologies.
+An intelligent ATS that leverages AI to streamline the recruitment process, match candidates with job openings, and automate initial screening.
+
+## Project Structure
+
+- **frontend/**: React application with TypeScript and Material UI
+- **edge/**: Supabase Edge Functions
+- **supabase/**: Database schema and configuration
+- **api/**: API endpoints
 
 ## Features
-- Job listing and management
+
+- Public job board with filtering
+- Job application submission
+- Admin job management dashboard
 - Candidate tracking and scoring
-- Modern, responsive UI (Material-UI)
-- Supabase/Postgres backend
-- Easy to extend and customize
+- Resume parsing and analysis
+- AI-powered candidate matching
 
 ## Tech Stack
-- **Frontend:** React, TypeScript, Material-UI, React Query
-- **Backend:** Supabase (Postgres, Auth, Storage)
-- **CI/CD:** GitHub Actions
-- **Dev Tools:** Vite, Yarn, Docker (for Supabase)
 
-## Getting Started
+- **Frontend**:
+  - React 18
+  - TypeScript
+  - Material UI
+  - TailwindCSS (for utility classes)
+  - React Router DOM
+  - React Query (for data fetching)
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) (v18+ recommended)
-- [Yarn](https://yarnpkg.com/)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for local Supabase)
-- [Supabase CLI](https://supabase.com/docs/guides/cli)
+- **Backend**:
+  - Supabase (PostgreSQL database)
+  - Supabase Auth (authentication)
+  - Supabase Edge Functions (serverless functions)
 
-### Setup
-1. **Clone the repo:**
+## Setup Instructions
+
+1. Clone the repository
+2. Install dependencies:
    ```bash
-   git clone https://github.com/EdgarJob/ai-powered-ats.git
-   cd ai-powered-ats
+   # In the root directory
+   pnpm install
    ```
-2. **Start Supabase locally:**
+
+3. Set up environment variables:
+   ```
+   # Create a .env file in the root directory
+   cp .env.example .env
+   # Edit .env with your Supabase credentials
+   ```
+
+4. Start the development server:
    ```bash
-   supabase start
+   pnpm run --parallel dev
    ```
-3. **Seed the database (optional):**
-   ```bash
-   PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f sample_data.sql
-   ```
-4. **Install frontend dependencies:**
-   ```bash
-   cd frontend
-   yarn install
-   ```
-5. **Run the frontend app:**
-   ```bash
-   yarn dev
-   ```
-6. **Open your browser:**
-   - Go to [http://localhost:5173](http://localhost:5173)
+
+5. Access the application at http://localhost:5173
+
+## Database Schema
+
+The application uses the following tables:
+
+- **organizations**: Companies using the system
+- **users**: Users with different roles
+- **jobs**: Job postings
+- **candidates**: Applicants for jobs
+- **candidate_scores**: AI-generated scores for candidates
 
 ## Contributing
-- Fork the repo and create a feature branch
-- Make your changes (add features, fix bugs, improve docs)
-- Open a pull request!
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## License
+
 MIT
 
 ---

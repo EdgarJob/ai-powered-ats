@@ -1,105 +1,59 @@
-import { Box, AppBar, Toolbar, Typography, Container, CssBaseline, Drawer, List, ListItem, ListItemIcon, ListItemText, ListItemButton } from '@mui/material';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import WorkIcon from '@mui/icons-material/Work';
-import PersonIcon from '@mui/icons-material/Person';
-import BarChartIcon from '@mui/icons-material/BarChart';
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Box, Container, Paper } from '@mui/material';
 
-const DRAWER_WIDTH = 240;
+interface LayoutProps {
+  children: React.ReactNode;
+}
 
-const MENU_ITEMS = [
-  { path: '/jobs', label: 'Jobs', icon: <WorkIcon /> },
-  { path: '/candidates', label: 'Candidates', icon: <PersonIcon /> },
-  { path: '/analytics', label: 'Analytics', icon: <BarChartIcon /> },
-];
-
-export function Layout() {
-  const navigate = useNavigate();
+export function Layout({ children }: LayoutProps) {
   const location = useLocation();
 
+  const navigation = [
+    { name: 'Apply for Jobs', href: '/' },
+    { name: 'Job Management', href: '/jobs' }
+  ];
+
   return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar 
-        position="fixed" 
-        sx={{ 
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
-          boxShadow: 'none',
-        }}
-      >
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'grey.50' }}>
+      {/* Header */}
+      <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: '#1d1d1f' }}>
+          <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'white' }}>
             AI-Powered ATS
           </Typography>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {navigation.map((item) => (
+              <Button
+                key={item.href}
+                component={Link}
+                to={item.href}
+                sx={{
+                  color: 'white',
+                  bgcolor: location.pathname === item.href ? 'primary.dark' : 'transparent',
+                  '&:hover': {
+                    bgcolor: 'primary.dark',
+                  }
+                }}
+              >
+                {item.name}
+              </Button>
+            ))}
+          </Box>
         </Toolbar>
       </AppBar>
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: DRAWER_WIDTH,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: DRAWER_WIDTH,
-            boxSizing: 'border-box',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            backdropFilter: 'blur(10px)',
-            borderRight: '1px solid rgba(0, 0, 0, 0.12)',
-          },
-        }}
-      >
-        <Toolbar />
-        <Box sx={{ overflow: 'auto', mt: 2 }}>
-          <List>
-            {MENU_ITEMS.map((item) => (
-              <ListItem key={item.path} disablePadding>
-                <ListItemButton
-                  onClick={() => navigate(item.path)}
-                  selected={location.pathname === item.path}
-                  sx={{
-                    mx: 2,
-                    borderRadius: 2,
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(0, 0, 0, 0.08)',
-                      '&:hover': {
-                        backgroundColor: 'rgba(0, 0, 0, 0.12)',
-                      },
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary={item.label} 
-                    sx={{ 
-                      '& .MuiListItemText-primary': {
-                        fontSize: '0.875rem',
-                        fontWeight: location.pathname === item.path ? 600 : 400,
-                      },
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-      </Drawer>
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          backgroundColor: '#f5f5f7',
-          minHeight: '100vh',
-        }}
-      >
-        <Toolbar />
-        <Container maxWidth="lg">
-          <Outlet />
-        </Container>
-      </Box>
+
+      {/* Main content */}
+      <Container component="main" sx={{ py: 4, flexGrow: 1 }}>
+        {children}
+      </Container>
+
+      {/* Footer */}
+      <Paper component="footer" square variant="outlined" sx={{ py: 3, mt: 'auto' }}>
+        <Typography variant="body2" color="text.secondary" align="center">
+          © 2024 AI-Powered ATS. All rights reserved.
+        </Typography>
+      </Paper>
     </Box>
   );
 }

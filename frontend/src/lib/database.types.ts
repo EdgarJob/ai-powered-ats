@@ -53,7 +53,6 @@ export interface Database {
         Row: {
           id: string
           org_id: string
-          email: string
           role: 'admin' | 'user'
           created_at: string
           updated_at: string
@@ -61,7 +60,6 @@ export interface Database {
         Insert: {
           id?: string
           org_id: string
-          email: string
           role?: 'admin' | 'user'
           created_at?: string
           updated_at?: string
@@ -69,7 +67,6 @@ export interface Database {
         Update: {
           id?: string
           org_id?: string
-          email?: string
           role?: 'admin' | 'user'
           created_at?: string
           updated_at?: string
@@ -87,28 +84,8 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: {
-          id?: string
-          org_id: string
-          title: string
-          description: string
-          requirements: string[]
-          status?: 'draft' | 'published' | 'closed'
-          created_by: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          org_id?: string
-          title?: string
-          description?: string
-          requirements?: string[]
-          status?: 'draft' | 'published' | 'closed'
-          created_by?: string
-          created_at?: string
-          updated_at?: string
-        }
+        Insert: Omit<Database['public']['Tables']['jobs']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['jobs']['Insert']>
       }
       candidates: {
         Row: {
@@ -116,37 +93,14 @@ export interface Database {
           job_id: string
           full_name: string
           email: string
-          phone?: string
+          phone: string | null
           resume_url: string
           status: 'pending' | 'reviewed' | 'shortlisted' | 'rejected'
-          embedding: number[]
           created_at: string
           updated_at: string
         }
-        Insert: {
-          id?: string
-          job_id: string
-          full_name: string
-          email: string
-          phone?: string
-          resume_url: string
-          status?: 'pending' | 'reviewed' | 'shortlisted' | 'rejected'
-          embedding?: number[]
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          full_name?: string
-          email?: string
-          phone?: string
-          resume_url?: string
-          status?: 'pending' | 'reviewed' | 'shortlisted' | 'rejected'
-          embedding?: number[]
-          created_at?: string
-          updated_at?: string
-        }
+        Insert: Omit<Database['public']['Tables']['candidates']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['candidates']['Insert']>
       }
       candidate_scores: {
         Row: {
@@ -190,4 +144,7 @@ export interface Database {
       [_ in never]: never
     }
   }
-} 
+}
+
+export type Job = Database['public']['Tables']['jobs']['Row']
+export type Candidate = Database['public']['Tables']['candidates']['Row'] 
