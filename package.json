@@ -1,0 +1,19 @@
+{
+    "name": "ai-powered-ats",
+    "private": true,
+    "workspaces": [
+        "frontend",
+        "edge",
+        "api",
+        "infra"
+    ],
+    "scripts": {
+        "dev": "pnpm run --parallel dev",
+        "build": "pnpm run --parallel build",
+        "lint": "pnpm run --parallel lint",
+        "test": "pnpm run --parallel test"
+    },
+    "devDependencies": {
+        "prettier": "^3.2.5"
+    }
+}
