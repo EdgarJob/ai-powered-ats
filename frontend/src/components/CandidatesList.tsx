@@ -23,7 +23,18 @@ import {
     CardContent,
     CardActions,
     Alert,
-    TablePagination
+    TablePagination,
+    TextField,
+    InputAdornment,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Select,
+    SelectChangeEvent,
+    IconButton,
+    Collapse,
+    Tooltip,
+    TableSortLabel
 } from '@mui/material';
 import { supabaseAdmin } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -35,6 +46,10 @@ import CakeIcon from '@mui/icons-material/Cake';
 import PlaceIcon from '@mui/icons-material/Place';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import ClearIcon from '@mui/icons-material/Clear';
+import SortIcon from '@mui/icons-material/Sort';
 
 // Types based on the CandidateData from CandidateRegistration.tsx
 interface Certification {
@@ -86,7 +101,19 @@ export function CandidatesList() {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
-    // Fetch all candidates
+    // Add filtering state
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [educationFilter, setEducationFilter] = useState<string>('');
+    const [locationFilter, setLocationFilter] = useState<string>('');
+    const [orderBy, setOrderBy] = useState<keyof Candidate>('created_at');
+    const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+
+    // Keep track of unique filter options
+    const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
+    const [uniqueEducationLevels, setUniqueEducationLevels] = useState<string[]>([]);
+
+    // Modified fetchCandidates to extract unique filter values
     useEffect(() => {
         const fetchCandidates = async () => {
             try {
@@ -103,6 +130,28 @@ export function CandidatesList() {
                 }
 
                 setCandidates(data || []);
+
+                // Extract unique values for filters
+                if (data) {
+                    // Get unique locations
+                    const locations = data
+                        .map(candidate => candidate.location)
+                        .filter((location): location is string =>
+                            location !== null && location !== undefined && location !== '')
+                        .filter((value, index, self) => self.indexOf(value) === index)
+                        .sort();
+
+                    // Get unique education levels
+                    const educationLevels = data
+                        .map(candidate => candidate.education_level)
+                        .filter((level): level is string =>
+                            level !== null && level !== undefined && level !== '')
+                        .filter((value, index, self) => self.indexOf(value) === index)
+                        .sort();
+
+                    setUniqueLocations(locations);
+                    setUniqueEducationLevels(educationLevels);
+                }
             } catch (err) {
                 console.error('Error fetching candidates:', err);
                 setError('Failed to load candidates. Please try again later.');
@@ -113,6 +162,87 @@ export function CandidatesList() {
 
         fetchCandidates();
     }, []);
+
+    // Add sorting handlers
+    const handleRequestSort = (property: keyof Candidate) => {
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
+    };
+
+    // Add filter handlers
+    const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(event.target.value);
+        setPage(0); // Reset to first page on search
+    };
+
+    const handleEducationFilterChange = (event: SelectChangeEvent) => {
+        setEducationFilter(event.target.value);
+        setPage(0); // Reset to first page on filter change
+    };
+
+    const handleLocationFilterChange = (event: SelectChangeEvent) => {
+        setLocationFilter(event.target.value);
+        setPage(0); // Reset to first page on filter change
+    };
+
+    const handleClearFilters = () => {
+        setSearchTerm('');
+        setEducationFilter('');
+        setLocationFilter('');
+        setPage(0);
+    };
+
+    const toggleFilterPanel = () => {
+        setFilterOpen(!filterOpen);
+    };
+
+    // Filter and sort the candidates
+    const filteredCandidates = candidates
+        .filter((candidate) => {
+            // Apply search term filter (case-insensitive)
+            const searchTermLower = searchTerm.toLowerCase();
+            const nameMatch = `${candidate.first_name} ${candidate.last_name}`.toLowerCase().includes(searchTermLower);
+            const emailMatch = candidate.email.toLowerCase().includes(searchTermLower);
+            const searchMatch = nameMatch || emailMatch;
+
+            // Apply education filter
+            const educationMatch = !educationFilter || candidate.education_level === educationFilter;
+
+            // Apply location filter
+            const locationMatch = !locationFilter || candidate.location === locationFilter;
+
+            return searchMatch && educationMatch && locationMatch;
+        })
+        .sort((a, b) => {
+            const valueA = a[orderBy];
+            const valueB = b[orderBy];
+
+            if (valueA === valueB) return 0;
+
+            // Handle null and undefined values
+            if (valueA == null) return order === 'asc' ? -1 : 1;
+            if (valueB == null) return order === 'asc' ? 1 : -1;
+
+            // Compare based on value type
+            if (typeof valueA === 'string' && typeof valueB === 'string') {
+                return order === 'asc'
+                    ? valueA.localeCompare(valueB)
+                    : valueB.localeCompare(valueA);
+            }
+
+            // For dates
+            if (orderBy === 'created_at' || orderBy === 'date_of_birth') {
+                const dateA = new Date(valueA as string);
+                const dateB = new Date(valueB as string);
+                return order === 'asc' ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+            }
+
+            // For other types
+            return order === 'asc'
+                ? (valueA as number) - (valueB as number)
+                : (valueB as number) - (valueA as number);
+        });
 
     // Handle dialog open/close
     const handleOpenDetails = (candidate: Candidate) => {
@@ -378,20 +508,172 @@ export function CandidatesList() {
                 <Alert severity="info">No candidates have registered yet.</Alert>
             ) : (
                 <>
+                    {/* Search and Filters */}
+                    <Box sx={{ mb: 3 }}>
+                        <Grid container spacing={2} alignItems="center">
+                            <Grid item xs={12} sm={6} md={4}>
+                                <TextField
+                                    fullWidth
+                                    placeholder="Search by name or email"
+                                    value={searchTerm}
+                                    onChange={handleSearchChange}
+                                    variant="outlined"
+                                    size="small"
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <SearchIcon />
+                                            </InputAdornment>
+                                        ),
+                                        endAdornment: searchTerm && (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => setSearchTerm('')}
+                                                    edge="end"
+                                                >
+                                                    <ClearIcon fontSize="small" />
+                                                </IconButton>
+                                            </InputAdornment>
+                                        )
+                                    }}
+                                />
+                            </Grid>
+
+                            <Grid item>
+                                <Tooltip title="Toggle Filters">
+                                    <IconButton onClick={toggleFilterPanel} color={filterOpen ? 'primary' : 'default'}>
+                                        <FilterListIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Grid>
+
+                            {(searchTerm || educationFilter || locationFilter) && (
+                                <Grid item>
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        onClick={handleClearFilters}
+                                        startIcon={<ClearIcon />}
+                                    >
+                                        Clear Filters
+                                    </Button>
+                                </Grid>
+                            )}
+
+                            <Grid item xs={12}>
+                                <Collapse in={filterOpen}>
+                                    <Paper sx={{ p: 2, mt: 1 }}>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12} sm={6} md={3}>
+                                                <FormControl fullWidth size="small">
+                                                    <InputLabel id="education-filter-label">Education Level</InputLabel>
+                                                    <Select
+                                                        labelId="education-filter-label"
+                                                        value={educationFilter}
+                                                        onChange={handleEducationFilterChange}
+                                                        label="Education Level"
+                                                    >
+                                                        <MenuItem value="">
+                                                            <em>All</em>
+                                                        </MenuItem>
+                                                        {uniqueEducationLevels.map((level) => (
+                                                            <MenuItem key={level} value={level}>
+                                                                {level}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+
+                                            <Grid item xs={12} sm={6} md={3}>
+                                                <FormControl fullWidth size="small">
+                                                    <InputLabel id="location-filter-label">Location</InputLabel>
+                                                    <Select
+                                                        labelId="location-filter-label"
+                                                        value={locationFilter}
+                                                        onChange={handleLocationFilterChange}
+                                                        label="Location"
+                                                    >
+                                                        <MenuItem value="">
+                                                            <em>All</em>
+                                                        </MenuItem>
+                                                        {uniqueLocations.map((location) => (
+                                                            <MenuItem key={location} value={location}>
+                                                                {location}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                        </Grid>
+                                    </Paper>
+                                </Collapse>
+                            </Grid>
+                        </Grid>
+                    </Box>
+
+                    {/* Results summary */}
+                    <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                            Showing {filteredCandidates.length} of {candidates.length} candidates
+                        </Typography>
+                    </Box>
+
                     <TableContainer component={Paper} sx={{ mb: 3 }}>
                         <Table>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>Name</TableCell>
-                                    <TableCell>Email</TableCell>
-                                    <TableCell>Location</TableCell>
-                                    <TableCell>Education</TableCell>
-                                    <TableCell>Date Registered</TableCell>
+                                    <TableCell>
+                                        <TableSortLabel
+                                            active={orderBy === 'first_name'}
+                                            direction={orderBy === 'first_name' ? order : 'asc'}
+                                            onClick={() => handleRequestSort('first_name')}
+                                        >
+                                            Name
+                                        </TableSortLabel>
+                                    </TableCell>
+                                    <TableCell>
+                                        <TableSortLabel
+                                            active={orderBy === 'email'}
+                                            direction={orderBy === 'email' ? order : 'asc'}
+                                            onClick={() => handleRequestSort('email')}
+                                        >
+                                            Email
+                                        </TableSortLabel>
+                                    </TableCell>
+                                    <TableCell>
+                                        <TableSortLabel
+                                            active={orderBy === 'location'}
+                                            direction={orderBy === 'location' ? order : 'asc'}
+                                            onClick={() => handleRequestSort('location')}
+                                        >
+                                            Location
+                                        </TableSortLabel>
+                                    </TableCell>
+                                    <TableCell>
+                                        <TableSortLabel
+                                            active={orderBy === 'education_level'}
+                                            direction={orderBy === 'education_level' ? order : 'asc'}
+                                            onClick={() => handleRequestSort('education_level')}
+                                        >
+                                            Education
+                                        </TableSortLabel>
+                                    </TableCell>
+                                    <TableCell>
+                                        <TableSortLabel
+                                            active={orderBy === 'created_at'}
+                                            direction={orderBy === 'created_at' ? order : 'asc'}
+                                            onClick={() => handleRequestSort('created_at')}
+                                        >
+                                            Date Registered
+                                        </TableSortLabel>
+                                    </TableCell>
                                     <TableCell>Actions</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {candidates
+                                {filteredCandidates
                                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                     .map((candidate) => (
                                         <TableRow key={candidate.id} hover>
@@ -422,14 +704,24 @@ export function CandidatesList() {
                                             </TableCell>
                                         </TableRow>
                                     ))}
+
+                                {filteredCandidates.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                                            <Typography variant="body1" color="text.secondary">
+                                                No candidates match the filter criteria
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </TableContainer>
 
                     <TablePagination
-                        rowsPerPageOptions={[5, 10, 25]}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
-                        count={candidates.length}
+                        count={filteredCandidates.length}
                         rowsPerPage={rowsPerPage}
                         page={page}
                         onPageChange={handleChangePage}
