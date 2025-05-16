@@ -1,6 +1,7 @@
 {
     "name": "ai-powered-ats",
     "private": true,
+    "packageManager": "pnpm@10.11.0",
     "scripts": {
         "dev": "pnpm run --parallel dev",
         "build": "pnpm run --parallel build",
