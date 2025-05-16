@@ -1,0 +1,5 @@
+packages:
+  - 'frontend'
+  - 'edge'
+  - 'api'
+  - 'infra' 
