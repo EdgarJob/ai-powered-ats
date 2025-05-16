@@ -19,7 +19,7 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
       - name: Run linters
         run: pnpm lint
 
@@ -40,7 +40,7 @@ jobs:
           cache: 'pip'
       - name: Install dependencies
         run: |
-          pnpm install
+          pnpm install --no-frozen-lockfile
           pip install -r api/requirements.txt
       - name: Run tests
         run: |
@@ -63,7 +63,7 @@ jobs:
           node-version: 20
           cache: 'pnpm'
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
       - name: Lint
         run: pnpm lint
       - name: Build
