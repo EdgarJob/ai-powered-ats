@@ -16,6 +16,7 @@ import DebugPanel from './components/Debug';
 import { JobDebugPanel, StorageDebugPanel } from './components/Debug';
 import { CandidatesList } from './components/CandidatesList';
 import { Dashboard } from './components/Dashboard';
+import { AIMatching } from './components/AIMatching';
 
 // Create a theme instance with Apple-like design
 const theme = createTheme({
@@ -130,6 +131,7 @@ const AppRoutes = () => {
       <Route path="/storage-debug" element={<StorageDebugPanel />} />
       <Route path="/candidates" element={<CandidatesList />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/ai-matching" element={<AIMatching />} />
     </Routes>
   );
 };

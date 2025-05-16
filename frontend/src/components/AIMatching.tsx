@@ -1,0 +1,442 @@
+import React, { useState, useEffect } from 'react';
+import {
+    Box,
+    Typography,
+    Paper,
+    Grid,
+    Card,
+    CardContent,
+    Button,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    CircularProgress,
+    Alert,
+    Divider,
+    Chip,
+    Avatar,
+    List,
+    ListItem,
+    ListItemAvatar,
+    ListItemText,
+    ListItemSecondaryAction,
+    LinearProgress,
+    Tooltip,
+    SelectChangeEvent
+} from '@mui/material';
+import { supabaseAdmin } from '../lib/supabase';
+import WorkIcon from '@mui/icons-material/Work';
+import PersonIcon from '@mui/icons-material/Person';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+
+// Define interfaces for the data
+interface Job {
+    id: string;
+    title: string;
+    description: string;
+    requirements: string[];
+    responsibilities: string;
+    status: string;
+    created_at: string;
+}
+
+interface Candidate {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    bio: string;
+    location: string;
+    education_level: string;
+    profile_picture_url?: string;
+    employment_history: {
+        company: string;
+        position: string;
+        description: string;
+    }[];
+    certifications: {
+        name: string;
+        issuer: string;
+    }[];
+}
+
+interface MatchResult {
+    candidateId: string;
+    first_name: string;
+    last_name: string;
+    matchScore: number;
+    profile_picture_url?: string;
+    email: string;
+    matchDetails: {
+        category: string;
+        score: number;
+        matches: { requirement: string; matched: boolean; reason: string }[];
+    }[];
+}
+
+export function AIMatching() {
+    // State for jobs and candidates
+    const [jobs, setJobs] = useState<Job[]>([]);
+    const [candidates, setCandidates] = useState<Candidate[]>([]);
+    const [selectedJob, setSelectedJob] = useState<string>('');
+    const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
+
+    // UI state
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+    const [analyzing, setAnalyzing] = useState(false);
+
+    // Fetch jobs and candidates on component mount
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+
+                // Fetch jobs
+                const { data: jobsData, error: jobsError } = await supabaseAdmin
+                    .from('jobs')
+                    .select('*')
+                    .eq('status', 'published');
+
+                if (jobsError) throw jobsError;
+
+                // Fetch candidates
+                const { data: candidatesData, error: candidatesError } = await supabaseAdmin
+                    .from('candidates')
+                    .select('*');
+
+                if (candidatesError) throw candidatesError;
+
+                setJobs(jobsData || []);
+                setCandidates(candidatesData || []);
+            } catch (err) {
+                console.error('Error fetching data:', err);
+                setError('Failed to load jobs and candidates. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Handle job selection change
+    const handleJobChange = (event: SelectChangeEvent) => {
+        setSelectedJob(event.target.value);
+        setMatchResults([]);
+        setSuccess(null);
+        setError(null);
+    };
+
+    // Match candidates to the selected job
+    const matchCandidatesToJob = async () => {
+        try {
+            setAnalyzing(true);
+            setError(null);
+            setSuccess(null);
+
+            const selectedJobData = jobs.find(job => job.id === selectedJob);
+            if (!selectedJobData) {
+                throw new Error('Selected job not found');
+            }
+
+            // Here we would normally call an AI service API for real matching
+            // For demo purposes, we'll simulate AI matching with a simple algorithm
+
+            // Wait to simulate AI processing time
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            const matchResults: MatchResult[] = candidates.map(candidate => {
+                // Calculate basic skill match score
+                const skillMatches = selectedJobData.requirements.map(req => {
+                    const reqLower = req.toLowerCase();
+
+                    // Check if skill appears in various candidate fields
+                    const inBio = candidate.bio?.toLowerCase().includes(reqLower) || false;
+                    const inEmployment = candidate.employment_history?.some(
+                        job => job.position.toLowerCase().includes(reqLower) ||
+                            job.description?.toLowerCase().includes(reqLower)
+                    ) || false;
+                    const inCertifications = candidate.certifications?.some(
+                        cert => cert.name.toLowerCase().includes(reqLower)
+                    ) || false;
+
+                    const matched = inBio || inEmployment || inCertifications;
+
+                    return {
+                        requirement: req,
+                        matched: matched,
+                        reason: matched
+                            ? `Found "${req}" in candidate profile`
+                            : `Could not find "${req}" in candidate profile`
+                    };
+                });
+
+                // Calculate education match
+                const educationMatch = {
+                    requirement: "Education",
+                    matched: !!candidate.education_level,
+                    reason: candidate.education_level
+                        ? `Candidate has ${candidate.education_level} education`
+                        : 'Education level not specified'
+                };
+
+                // Calculate experience match based on employment history
+                const experienceMatch = {
+                    requirement: "Experience",
+                    matched: candidate.employment_history?.length > 0,
+                    reason: candidate.employment_history?.length > 0
+                        ? `Candidate has ${candidate.employment_history.length} previous job(s)`
+                        : 'No employment history found'
+                };
+
+                // Calculate overall scores
+                const skillMatchScore = skillMatches.filter(m => m.matched).length / skillMatches.length;
+                const educationScore = educationMatch.matched ? 1 : 0;
+                const experienceScore = experienceMatch.matched ? 1 : 0;
+
+                // Final weighted score
+                const overallMatchScore = (
+                    skillMatchScore * 0.6 +
+                    educationScore * 0.2 +
+                    experienceScore * 0.2
+                ) * 100;
+
+                return {
+                    candidateId: candidate.id,
+                    first_name: candidate.first_name,
+                    last_name: candidate.last_name,
+                    profile_picture_url: candidate.profile_picture_url,
+                    email: candidate.email,
+                    matchScore: Math.round(overallMatchScore),
+                    matchDetails: [
+                        {
+                            category: 'Skills',
+                            score: skillMatchScore * 100,
+                            matches: skillMatches
+                        },
+                        {
+                            category: 'Education',
+                            score: educationScore * 100,
+                            matches: [educationMatch]
+                        },
+                        {
+                            category: 'Experience',
+                            score: experienceScore * 100,
+                            matches: [experienceMatch]
+                        }
+                    ]
+                };
+            });
+
+            // Sort by match score (highest first)
+            const sortedResults = matchResults.sort((a, b) => b.matchScore - a.matchScore);
+
+            setMatchResults(sortedResults);
+            setSuccess(`Successfully matched ${sortedResults.length} candidates to this job`);
+        } catch (err) {
+            console.error('Error in AI matching:', err);
+            setError('Failed to complete AI matching. Please try again.');
+        } finally {
+            setAnalyzing(false);
+        }
+    };
+
+    // Helper function to get color based on match score
+    const getMatchColor = (score: number): string => {
+        if (score >= 80) return '#4caf50'; // Green
+        if (score >= 60) return '#ff9800'; // Orange
+        return '#f44336'; // Red
+    };
+
+    if (loading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    return (
+        <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 500 }}>
+                AI Candidate Matching
+            </Typography>
+
+            <Typography variant="body1" color="text.secondary" paragraph>
+                Use AI to find the best candidates for your job openings based on skills, experience, and education.
+            </Typography>
+
+            {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+
+            <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }} elevation={0} variant="outlined">
+                <Typography variant="h6" gutterBottom>
+                    Select a Job
+                </Typography>
+
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                    <InputLabel id="job-select-label">Job Position</InputLabel>
+                    <Select
+                        labelId="job-select-label"
+                        value={selectedJob}
+                        onChange={handleJobChange}
+                        label="Job Position"
+                    >
+                        <MenuItem value="">
+                            <em>Select a job</em>
+                        </MenuItem>
+                        {jobs.map(job => (
+                            <MenuItem key={job.id} value={job.id}>
+                                {job.title}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                {selectedJob && (
+                    <>
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="body2" color="text.secondary">
+                                This will analyze {candidates.length} candidate profiles against the selected job requirements.
+                            </Typography>
+                        </Box>
+
+                        <Button
+                            variant="contained"
+                            onClick={matchCandidatesToJob}
+                            disabled={analyzing}
+                            startIcon={analyzing ? <CircularProgress size={20} /> : <WorkIcon />}
+                        >
+                            {analyzing ? 'Analyzing Candidates...' : 'Match Candidates'}
+                        </Button>
+                    </>
+                )}
+            </Paper>
+
+            {analyzing && (
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                        AI is analyzing candidate profiles...
+                    </Typography>
+                    <LinearProgress />
+                </Box>
+            )}
+
+            {matchResults.length > 0 && (
+                <Box>
+                    <Typography variant="h5" gutterBottom>
+                        Match Results
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                        {matchResults.length} candidates ranked by match score
+                    </Typography>
+
+                    <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
+                        {matchResults.map((result, index) => (
+                            <React.Fragment key={result.candidateId}>
+                                {index > 0 && <Divider variant="inset" component="li" />}
+                                <ListItem
+                                    alignItems="flex-start"
+                                    sx={{
+                                        py: 2,
+                                        px: 3,
+                                        '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.02)' }
+                                    }}
+                                >
+                                    <ListItemAvatar>
+                                        <Avatar
+                                            src={result.profile_picture_url}
+                                            sx={{ width: 56, height: 56 }}
+                                        >
+                                            <PersonIcon />
+                                        </Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText
+                                        primary={
+                                            <Typography variant="h6" component="div">
+                                                {result.first_name} {result.last_name}
+                                            </Typography>
+                                        }
+                                        secondary={
+                                            <>
+                                                <Typography component="span" variant="body2" color="text.primary">
+                                                    {result.email}
+                                                </Typography>
+                                                <Box sx={{ mt: 1 }}>
+                                                    {result.matchDetails.map((detail, i) => (
+                                                        <Chip
+                                                            key={i}
+                                                            label={`${detail.category}: ${Math.round(detail.score)}%`}
+                                                            size="small"
+                                                            sx={{
+                                                                mr: 1,
+                                                                mb: 1,
+                                                                bgcolor: getMatchColor(detail.score) + '22',
+                                                                color: getMatchColor(detail.score),
+                                                                fontWeight: 500
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </Box>
+                                            </>
+                                        }
+                                    />
+                                    <ListItemSecondaryAction>
+                                        <Tooltip title={`${result.matchScore}% match with job requirements`}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <Typography
+                                                    variant="h5"
+                                                    sx={{
+                                                        fontWeight: 'bold',
+                                                        color: getMatchColor(result.matchScore)
+                                                    }}
+                                                >
+                                                    {result.matchScore}%
+                                                </Typography>
+                                            </Box>
+                                        </Tooltip>
+                                    </ListItemSecondaryAction>
+                                </ListItem>
+
+                                {/* Detailed match explanation expandable */}
+                                <Box sx={{ pl: 9, pr: 3, pb: 2 }}>
+                                    <Typography variant="subtitle2" gutterBottom>
+                                        Match Details:
+                                    </Typography>
+                                    <Box>
+                                        {result.matchDetails.flatMap(detail =>
+                                            detail.matches.map((match, i) => (
+                                                <Box
+                                                    key={`${detail.category}-${i}`}
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        mb: 0.5
+                                                    }}
+                                                >
+                                                    {match.matched ? (
+                                                        <CheckCircleIcon fontSize="small" color="success" sx={{ mr: 1 }} />
+                                                    ) : (
+                                                        <CancelIcon fontSize="small" color="error" sx={{ mr: 1 }} />
+                                                    )}
+                                                    <Typography variant="body2">
+                                                        {match.reason}
+                                                    </Typography>
+                                                </Box>
+                                            ))
+                                        )}
+                                    </Box>
+                                </Box>
+                            </React.Fragment>
+                        ))}
+                    </List>
+                </Box>
+            )}
+        </Box>
+    );
+} 

@@ -14,7 +14,8 @@ export function Layout({ children }: LayoutProps) {
     { name: 'Apply for Jobs', href: '/' },
     { name: 'Register as Candidate', href: '/register' },
     { name: 'View Candidates', href: '/candidates' },
-    { name: 'Job Management', href: '/jobs' }
+    { name: 'Job Management', href: '/jobs' },
+    { name: 'AI Matching', href: '/ai-matching' }
   ];
 
   return (
