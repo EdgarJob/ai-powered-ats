@@ -10,6 +10,7 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
 
   const navigation = [
+    { name: 'Dashboard', href: '/dashboard' },
     { name: 'Apply for Jobs', href: '/' },
     { name: 'Register as Candidate', href: '/register' },
     { name: 'View Candidates', href: '/candidates' },

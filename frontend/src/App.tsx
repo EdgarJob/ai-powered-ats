@@ -15,6 +15,7 @@ import { createRequiredStorageBuckets } from './lib/create-storage-buckets';
 import DebugPanel from './components/Debug';
 import { JobDebugPanel, StorageDebugPanel } from './components/Debug';
 import { CandidatesList } from './components/CandidatesList';
+import { Dashboard } from './components/Dashboard';
 
 // Create a theme instance with Apple-like design
 const theme = createTheme({
@@ -128,6 +129,7 @@ const AppRoutes = () => {
       <Route path="/register" element={<CandidateRegistration />} />
       <Route path="/storage-debug" element={<StorageDebugPanel />} />
       <Route path="/candidates" element={<CandidatesList />} />
+      <Route path="/dashboard" element={<Dashboard />} />
     </Routes>
   );
 };
