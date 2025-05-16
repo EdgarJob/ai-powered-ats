@@ -185,7 +185,7 @@ export function AIMatching() {
                 .sort((a, b) => b.matchScore - a.matchScore);
 
             setMatchResults(validResults);
-            setSuccess(`Successfully matched ${validResults.length} candidates to this job using AI`);
+            setSuccess(`Successfully matched ${validResults.length} candidates to this job using Deepseek AI model`);
         } catch (err) {
             console.error('Error in AI matching:', err);
             setError('Failed to complete AI matching. Please try again.');

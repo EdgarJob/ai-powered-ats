@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+// Change to use Open Router API key
+const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
 
 interface CandidateData {
   bio: string;
@@ -15,8 +16,8 @@ export async function analyzeJobMatch(
   candidateData: CandidateData
 ) {
   if (!apiKey) {
-    console.error('OpenAI API key is missing');
-    throw new Error('OpenAI API key is not configured');
+    console.error('Open Router API key is missing');
+    throw new Error('Open Router API key is not configured');
   }
 
   try {
@@ -32,7 +33,7 @@ export async function analyzeJobMatch(
     // Format requirements as list
     const requirementsList = jobRequirements.map(req => `- ${req}`).join('\n');
 
-    // Construct prompt for OpenAI
+    // Construct prompt for AI model
     const prompt = `
     I need to analyze how well a candidate matches a job position based on the following information:
 
@@ -77,11 +78,11 @@ export async function analyzeJobMatch(
     }
     `;
 
-    // Call OpenAI API
+    // Call Open Router API instead of OpenAI
     const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: 'gpt-3.5-turbo',
+        model: 'deepseek/deepseek-chat-v3-0324:free',
         messages: [
           { role: 'system', content: 'You are a skilled HR analyst evaluating job candidate matches.' },
           { role: 'user', content: prompt }
@@ -91,12 +92,14 @@ export async function analyzeJobMatch(
       {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://github.com/EdgarJob/ai-powered-ats', // Required by OpenRouter for attribution
+          'X-Title': 'AI Powered ATS' // Optional but good practice
         }
       }
     );
 
-    // Parse the JSON response from the AI
+    // Parse the JSON response from the AI - same parsing logic but with OpenRouter response format
     const resultContent = response.data.choices[0].message.content;
     const jsonMatch = resultContent.match(/```json\n([\s\S]*?)\n```/) || 
                       resultContent.match(/{[\s\S]*}/);
@@ -112,15 +115,14 @@ export async function analyzeJobMatch(
     return JSON.parse(jsonString);
   } catch (error) {
     console.error('Error analyzing job match:', error);
-    // Fallback to the simulated matching if OpenAI call fails
+    // Fallback to the simulated matching if API call fails
     return simulateMatching(jobRequirements, candidateData);
   }
 }
 
-// Fallback function that simulates matching if API call fails
+// Fallback function that simulates matching if API call fails - unchanged
 function simulateMatching(jobRequirements: string[], candidateData: CandidateData) {
-  // Implement the same logic as in the original AIMatching component
-  // For brevity, this is simplified
+  // Same implementation as before
   const skillMatches = jobRequirements.map(req => {
     const reqLower = req.toLowerCase();
     const matched = 
