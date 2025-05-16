@@ -17,6 +17,7 @@
     "@mui/x-data-grid": "^6.19.4",
     "@supabase/supabase-js": "^2.39.7",
     "@tanstack/react-query": "^5.21.7",
+    "date-fns": "^4.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.1",

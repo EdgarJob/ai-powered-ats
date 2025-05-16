@@ -20,6 +20,7 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
     const [industry, setIndustry] = useState('');
     const [location, setLocation] = useState('');
     const [field, setField] = useState('');
+    const [responsibilities, setResponsibilities] = useState('');
     const [requirementInput, setRequirementInput] = useState('');
     const [requirements, setRequirements] = useState<string[]>([]);
     const [status, setStatus] = useState<JobStatus>('draft');
@@ -31,6 +32,56 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
     const [organizationId, setOrganizationId] = useState<string | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
     const queryClient = useQueryClient();
+
+    // Initialize demo organization and user if needed
+    const initDemoDataIfNeeded = async () => {
+        try {
+            // Check and set demo org ID
+            let orgId = localStorage.getItem('demo_org_id');
+
+            if (!orgId) {
+                // Create a demo organization
+                const demoOrgId = uuidv4();
+
+                // Insert the organization
+                const { error: orgError } = await supabaseAdmin
+                    .from('organizations')
+                    .insert([
+                        {
+                            id: demoOrgId,
+                            name: 'Demo Organization'
+                        }
+                    ]);
+
+                if (orgError) {
+                    console.error('Error creating demo organization:', orgError);
+                } else {
+                    console.log('Demo organization created with ID:', demoOrgId);
+                    localStorage.setItem('demo_org_id', demoOrgId);
+                    orgId = demoOrgId;
+                }
+            }
+
+            setOrganizationId(orgId);
+
+            // Check and set demo user ID
+            let userIdValue = localStorage.getItem('demo_user_id');
+
+            if (!userIdValue) {
+                // Create a demo user ID (not in auth table, just for reference)
+                const demoUserId = uuidv4();
+                localStorage.setItem('demo_user_id', demoUserId);
+                userIdValue = demoUserId;
+            }
+
+            setUserId(userIdValue);
+
+            return { orgId, userId: userIdValue };
+        } catch (error) {
+            console.error('Error initializing demo data:', error);
+            return { orgId: null, userId: null };
+        }
+    };
 
     // Fetch or create organization and user on component mount
     useEffect(() => {
@@ -144,6 +195,135 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
         };
     }, []);
 
+    // Initialize database tables if needed
+    useEffect(() => {
+        const setupDatabase = async () => {
+            try {
+                // Add demo org/user if they don't exist
+                await initDemoDataIfNeeded();
+
+                // Check if the metadata column exists in the jobs table
+                const { data: metadataCheck, error: metadataError } = await supabaseAdmin.rpc(
+                    'check_column_exists',
+                    { table_name: 'jobs', column_name: 'metadata' }
+                ).single();
+
+                // If the check failed, it might be because the function doesn't exist
+                if (metadataError) {
+                    console.log('Creating check_column_exists function...');
+                    // Create the helper function to check if a column exists
+                    await supabaseAdmin.rpc('create_column_check_function');
+                }
+
+                // Check again or for the first time
+                const { data: columnExists } = await supabaseAdmin.rpc(
+                    'check_column_exists',
+                    { table_name: 'jobs', column_name: 'metadata' }
+                ).single();
+
+                if (!columnExists) {
+                    console.log('Adding metadata column to jobs table...');
+
+                    // Add a metadata JSONB column to store additional fields
+                    try {
+                        // Method 1: Using RPC
+                        const { error: alterError } = await supabaseAdmin.rpc(
+                            'execute_sql',
+                            {
+                                sql: 'ALTER TABLE jobs ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT \'{}\''
+                            }
+                        );
+
+                        if (alterError) {
+                            console.error('Error adding metadata column via RPC:', alterError);
+
+                            // Method 2: Direct SQL
+                            try {
+                                // Try a different approach with fetch API
+                                const directResponse = await fetch(`${window.location.origin}/rest/v1/rpc/execute_sql`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                                        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY}`
+                                    },
+                                    body: JSON.stringify({
+                                        sql: 'ALTER TABLE jobs ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT \'{}\''
+                                    })
+                                });
+
+                                if (!directResponse.ok) {
+                                    console.error('Error adding metadata column via direct fetch:', await directResponse.text());
+                                } else {
+                                    console.log('Metadata column added successfully via direct fetch');
+                                }
+                            } catch (fetchError) {
+                                console.error('Error with direct fetch to add metadata column:', fetchError);
+                            }
+                        } else {
+                            console.log('Metadata column added successfully via RPC');
+                        }
+                    } catch (e) {
+                        console.error('Exception when adding metadata column:', e);
+                    }
+
+                    // Verify if the column was added
+                    try {
+                        const { data: verifyExists } = await supabaseAdmin.rpc(
+                            'check_column_exists',
+                            { table_name: 'jobs', column_name: 'metadata' }
+                        ).single();
+
+                        if (verifyExists) {
+                            console.log('Metadata column verified as existing after addition');
+                        } else {
+                            console.warn('Metadata column still not detected after addition attempts');
+                        }
+                    } catch (verifyError) {
+                        console.error('Error verifying metadata column:', verifyError);
+                    }
+                } else {
+                    console.log('Metadata column already exists');
+                }
+
+                // Also ensure the responsibilities column exists
+                try {
+                    const { data: respExists } = await supabaseAdmin.rpc(
+                        'check_column_exists',
+                        { table_name: 'jobs', column_name: 'responsibilities' }
+                    ).single();
+
+                    if (!respExists) {
+                        console.log('Adding responsibilities column...');
+                        await supabaseAdmin.rpc(
+                            'execute_sql',
+                            {
+                                sql: 'ALTER TABLE jobs ADD COLUMN IF NOT EXISTS responsibilities TEXT'
+                            }
+                        );
+                        console.log('Responsibilities column added');
+                    } else {
+                        console.log('Responsibilities column already exists');
+                    }
+                } catch (respError) {
+                    console.error('Error checking/adding responsibilities column:', respError);
+                }
+
+                // All initialization done
+                setIsInitializing(false);
+
+            } catch (error) {
+                console.error('Error setting up database:', error);
+                // Set a timeout to retry initialization
+                setTimeout(() => {
+                    setupDatabase();
+                }, 3000);
+            }
+        };
+
+        setupDatabase();
+    }, []);
+
     // Add a requirement to the list
     const handleAddRequirement = () => {
         if (requirementInput.trim() && !requirements.includes(requirementInput.trim())) {
@@ -203,58 +383,137 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
                 return;
             }
 
-            // Create a job object
+            // Create a job object with a UUID
             const jobId = uuidv4();
-            const jobData = {
-                id: jobId,  // Explicitly set the ID
+
+            // Create metadata object
+            const metadataObject = {
+                industry,
+                location,
+                field,
+                deadline,
+            };
+
+            // Store in localStorage for later use
+            localStorage.setItem(`job_${jobId}_metadata`, JSON.stringify(metadataObject));
+
+            // Log responsibilities value to check for any formatting issues
+            console.log('Responsibilities to save:', responsibilities);
+            console.log('Responsibilities type:', typeof responsibilities);
+            console.log('Responsibilities length:', responsibilities ? responsibilities.length : 0);
+            console.log('Metadata to save:', metadataObject);
+
+            // Create job data with responsibilities directly and metadata
+            const baseJobData = {
+                id: jobId,
                 title,
                 description,
                 requirements,
                 status,
                 created_by: userIdValue,
-                org_id: orgId
-                // Remove fields that don't exist in the actual database
-                // industry, location, field, deadline
+                org_id: orgId,
+                responsibilities: responsibilities || undefined,
+                metadata: JSON.stringify(metadataObject) // Include metadata in the database insert
             };
 
-            console.log('Submitting job data:', jobData);
+            console.log('Job data to insert:', baseJobData);
 
-            // Use admin client with service role key for higher permissions
-            const { data, error: insertError } = await supabaseAdmin
-                .from('jobs')
-                .insert([jobData])
-                .select();
+            // Try direct SQL insertion first as it's most reliable for schema issues
+            try {
+                const directInsertQuery = `
+                    INSERT INTO jobs (
+                        id, title, description, requirements, status, 
+                        created_by, org_id, responsibilities, metadata
+                    ) VALUES (
+                        '${jobId}', 
+                        '${title.replace(/'/g, "''")}', 
+                        '${description.replace(/'/g, "''")}', 
+                        '${JSON.stringify(requirements).replace(/'/g, "''")}', 
+                        '${status}', 
+                        '${userIdValue}', 
+                        '${orgId}', 
+                        ${responsibilities ? `'${responsibilities.replace(/'/g, "''")}'` : 'NULL'},
+                        '${JSON.stringify(metadataObject).replace(/'/g, "''")}'
+                    )
+                    RETURNING *;
+                `;
 
-            if (insertError) {
-                console.error('Supabase error:', insertError);
-                console.error('Error code:', insertError.code);
-                console.error('Error details:', insertError.details);
-                console.error('Error hint:', insertError.hint);
-                console.error('Error message:', insertError.message);
-                throw new Error(insertError.message || 'Error adding job');
+                console.log('Direct SQL insert query:', directInsertQuery);
+
+                const { data: sqlData, error: sqlError } = await supabaseAdmin.rpc(
+                    'execute_sql',
+                    { sql: directInsertQuery }
+                );
+
+                if (sqlError) {
+                    console.error('Direct SQL insert failed:', sqlError);
+                } else {
+                    console.log('Direct SQL insert succeeded:', sqlData);
+                    setSuccess('Job added successfully!');
+
+                    // Reset form after success
+                    resetForm();
+                    onSuccess?.();
+                    queryClient.invalidateQueries({ queryKey: ['jobs'] });
+                    return; // Exit early on success
+                }
+            } catch (sqlErr) {
+                console.error('Exception during direct SQL insert:', sqlErr);
             }
 
-            console.log('Job added successfully:', data);
+            // Fall back to standard insertion
+            console.log('Falling back to standard insert approach...');
+
+            // Insert the job with standard method
+            let insertedJob;
+            try {
+                const { data: insertedData, error: insertError } = await supabaseAdmin
+                    .from('jobs')
+                    .insert([baseJobData])
+                    .select();
+
+                if (insertError) {
+                    console.error('Error with insertion:', insertError);
+                    throw new Error(insertError.message || 'Error adding job');
+                }
+
+                insertedJob = insertedData?.[0];
+                console.log('Job added successfully:', insertedJob);
+            } catch (insertErr) {
+                console.error('Error inserting job:', insertErr);
+                throw insertErr;
+            }
+
+            console.log('Job creation process complete');
             setSuccess('Job added successfully!');
+
             queryClient.invalidateQueries({ queryKey: ['jobs'] });
-
-            // Reset form
-            setTitle('');
-            setDescription('');
-            setIndustry('');
-            setLocation('');
-            setField('');
-            setRequirements([]);
-            setStatus('draft');
-            setDeadline('');
-
+            resetForm();
             onSuccess?.();
         } catch (err) {
             console.error('Error details:', err);
-            setError('Failed to add job: ' + (err instanceof Error ? err.message : 'Unknown error'));
+
+            // Show detailed error message
+            const errorMessage = err instanceof Error
+                ? `${err.name}: ${err.message}` + (err.stack ? `\nStack: ${err.stack}` : '')
+                : 'Unknown error';
+            setError('Failed to add job: ' + errorMessage);
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    // Helper to reset the form
+    const resetForm = () => {
+        setTitle('');
+        setDescription('');
+        setIndustry('');
+        setLocation('');
+        setField('');
+        setResponsibilities('');
+        setRequirements([]);
+        setStatus('draft');
+        setDeadline('');
     };
 
     return (
@@ -275,15 +534,27 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
                 disabled={isInitializing}
             />
             <TextField
-                label="Description"
+                label="Description (Overview of the position)"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 fullWidth
                 margin="normal"
                 multiline
-                rows={4}
+                rows={3}
                 required
                 disabled={isInitializing}
+                helperText="Provide a general overview of the position"
+            />
+            <TextField
+                label="Responsibilities"
+                value={responsibilities}
+                onChange={e => setResponsibilities(e.target.value)}
+                fullWidth
+                margin="normal"
+                multiline
+                rows={4}
+                disabled={isInitializing}
+                helperText="List the key responsibilities of this position"
             />
             <TextField
                 label="Industry"
@@ -311,13 +582,14 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
             />
             <Box sx={{ mb: 2 }}>
                 <TextField
-                    label="Add Requirement"
+                    label="Add Required Skill"
                     value={requirementInput}
                     onChange={e => setRequirementInput(e.target.value)}
                     onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddRequirement())}
                     fullWidth
                     margin="normal"
                     disabled={isInitializing}
+                    helperText="Add skills required for this position"
                 />
                 <Button
                     type="button"
@@ -327,7 +599,7 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
                     sx={{ mt: 1 }}
                     disabled={isInitializing}
                 >
-                    Add Requirement
+                    Add Skill
                 </Button>
                 <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {requirements.map((req, index) => (

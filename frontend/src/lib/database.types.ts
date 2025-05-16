@@ -83,6 +83,8 @@ export interface Database {
           created_by: string
           created_at: string
           updated_at: string
+          metadata?: any
+          responsibilities?: string
         }
         Insert: Omit<Database['public']['Tables']['jobs']['Row'], 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Database['public']['Tables']['jobs']['Insert']>
@@ -146,5 +148,11 @@ export interface Database {
   }
 }
 
-export type Job = Database['public']['Tables']['jobs']['Row']
+export type Job = Database['public']['Tables']['jobs']['Row'] & {
+  deadline?: string | null;
+  industry?: string | null;
+  location?: string | null;
+  field?: string | null;
+  responsibilities?: string | null;
+};
 export type Candidate = Database['public']['Tables']['candidates']['Row'] 
