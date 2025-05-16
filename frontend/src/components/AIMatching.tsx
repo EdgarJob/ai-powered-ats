@@ -77,6 +77,39 @@ interface MatchResult {
     }[];
 }
 
+// Helper function to get color based on match score
+const getMatchColor = (score: number): string => {
+    if (score >= 80) return '#4caf50'; // Green
+    if (score >= 60) return '#ff9800'; // Orange
+    return '#f44336'; // Red
+};
+
+// Helper function to get different colors for different category types
+const getCategoryColor = (category: string, score: number): string => {
+    // Base color determination by score
+    const baseColor = getMatchColor(score);
+
+    // Slight variations based on category
+    switch (category) {
+        case 'Skills':
+            return baseColor;
+        case 'Education':
+            return baseColor === '#4caf50' ? '#2e7d32' :
+                baseColor === '#ff9800' ? '#e65100' : '#c62828';
+        case 'Experience':
+            return baseColor === '#4caf50' ? '#388e3c' :
+                baseColor === '#ff9800' ? '#ef6c00' : '#b71c1c';
+        case 'Industry Fit':
+            return baseColor === '#4caf50' ? '#1b5e20' :
+                baseColor === '#ff9800' ? '#bf360c' : '#8e0000';
+        case 'Responsibility Match':
+            return baseColor === '#4caf50' ? '#43a047' :
+                baseColor === '#ff9800' ? '#f57c00' : '#d32f2f';
+        default:
+            return baseColor;
+    }
+};
+
 export function AIMatching() {
     // State for jobs and candidates
     const [jobs, setJobs] = useState<Job[]>([]);
@@ -89,6 +122,7 @@ export function AIMatching() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
+    const [usingAI, setUsingAI] = useState<boolean>(false);
 
     // Fetch jobs and candidates on component mount
     useEffect(() => {
@@ -138,6 +172,7 @@ export function AIMatching() {
             setAnalyzing(true);
             setError(null);
             setSuccess(null);
+            setUsingAI(false);
 
             const selectedJobData = jobs.find(job => job.id === selectedJob);
             if (!selectedJobData) {
@@ -158,6 +193,8 @@ export function AIMatching() {
                             education_level: candidate.education_level || ''
                         }
                     );
+
+                    setUsingAI(true);
 
                     return {
                         candidateId: candidate.id,
@@ -185,20 +222,13 @@ export function AIMatching() {
                 .sort((a, b) => b.matchScore - a.matchScore);
 
             setMatchResults(validResults);
-            setSuccess(`Successfully matched ${validResults.length} candidates to this job using Deepseek AI model`);
+            setSuccess(`Successfully matched ${validResults.length} candidates ${usingAI ? 'using OpenAI GPT-4o-mini model' : 'using fallback algorithm'}`);
         } catch (err) {
             console.error('Error in AI matching:', err);
             setError('Failed to complete AI matching. Please try again.');
         } finally {
             setAnalyzing(false);
         }
-    };
-
-    // Helper function to get color based on match score
-    const getMatchColor = (score: number): string => {
-        if (score >= 80) return '#4caf50'; // Green
-        if (score >= 60) return '#ff9800'; // Orange
-        return '#f44336'; // Red
     };
 
     if (loading) {
@@ -279,10 +309,18 @@ export function AIMatching() {
                 <Box>
                     <Typography variant="h5" gutterBottom>
                         Match Results
+                        {usingAI && (
+                            <Chip
+                                label="AI-POWERED"
+                                color="primary"
+                                size="small"
+                                sx={{ ml: 2, backgroundColor: '#3f51b5' }}
+                            />
+                        )}
                     </Typography>
 
                     <Typography variant="body2" color="text.secondary" paragraph>
-                        {matchResults.length} candidates ranked by match score
+                        {matchResults.length} candidates ranked by match score {usingAI ? 'using advanced AI analysis' : 'using algorithm'}
                     </Typography>
 
                     <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
@@ -325,8 +363,8 @@ export function AIMatching() {
                                                             sx={{
                                                                 mr: 1,
                                                                 mb: 1,
-                                                                bgcolor: getMatchColor(detail.score) + '22',
-                                                                color: getMatchColor(detail.score),
+                                                                bgcolor: getCategoryColor(detail.category, detail.score) + '22',
+                                                                color: getCategoryColor(detail.category, detail.score),
                                                                 fontWeight: 500
                                                             }}
                                                         />

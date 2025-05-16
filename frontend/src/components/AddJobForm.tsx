@@ -21,8 +21,7 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
     const [location, setLocation] = useState('');
     const [field, setField] = useState('');
     const [responsibilities, setResponsibilities] = useState('');
-    const [requirementInput, setRequirementInput] = useState('');
-    const [requirements, setRequirements] = useState<string[]>([]);
+    const [requirements, setRequirements] = useState('');
     const [status, setStatus] = useState<JobStatus>('draft');
     const [deadline, setDeadline] = useState('');
     const [success, setSuccess] = useState('');
@@ -324,17 +323,28 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
         setupDatabase();
     }, []);
 
-    // Add a requirement to the list
-    const handleAddRequirement = () => {
-        if (requirementInput.trim() && !requirements.includes(requirementInput.trim())) {
-            setRequirements([...requirements, requirementInput.trim()]);
-            setRequirementInput('');
-        }
+    // Helper to reset the form
+    const resetForm = () => {
+        setTitle('');
+        setDescription('');
+        setIndustry('');
+        setLocation('');
+        setField('');
+        setResponsibilities('');
+        setRequirements('');
+        setStatus('draft');
+        setDeadline('');
     };
 
-    // Remove a requirement
-    const handleDeleteRequirement = (req: string) => {
-        setRequirements(requirements.filter(r => r !== req));
+    // Parse requirements string into array for the database
+    const parseRequirements = (requirementsText: string): string[] => {
+        if (!requirementsText.trim()) return [];
+
+        // Split by new lines and filter out empty lines
+        return requirementsText
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
     };
 
     // Handle form submission
@@ -345,8 +355,11 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
         setIsSubmitting(true);
 
         try {
+            // Parse requirements from text to array
+            const requirementsArray = parseRequirements(requirements);
+
             // Check that all required fields are filled
-            if (!title || !description || requirements.length === 0) {
+            if (!title || !description || requirementsArray.length === 0) {
                 setError('Please fill in all required fields and add at least one requirement.');
                 setIsSubmitting(false);
                 return;
@@ -408,7 +421,7 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
                 id: jobId,
                 title,
                 description,
-                requirements,
+                requirements: requirementsArray,
                 status,
                 created_by: userIdValue,
                 org_id: orgId,
@@ -428,7 +441,7 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
                         '${jobId}', 
                         '${title.replace(/'/g, "''")}', 
                         '${description.replace(/'/g, "''")}', 
-                        '${JSON.stringify(requirements).replace(/'/g, "''")}', 
+                        '${JSON.stringify(requirementsArray).replace(/'/g, "''")}', 
                         '${status}', 
                         '${userIdValue}', 
                         '${orgId}', 
@@ -503,19 +516,6 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
         }
     };
 
-    // Helper to reset the form
-    const resetForm = () => {
-        setTitle('');
-        setDescription('');
-        setIndustry('');
-        setLocation('');
-        setField('');
-        setResponsibilities('');
-        setRequirements([]);
-        setStatus('draft');
-        setDeadline('');
-    };
-
     return (
         <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
             <Typography variant="h6" gutterBottom>Add a New Job</Typography>
@@ -580,38 +580,18 @@ export function AddJobForm({ onSuccess }: AddJobFormProps) {
                 margin="normal"
                 disabled={isInitializing}
             />
-            <Box sx={{ mb: 2 }}>
-                <TextField
-                    label="Add Required Skill"
-                    value={requirementInput}
-                    onChange={e => setRequirementInput(e.target.value)}
-                    onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddRequirement())}
-                    fullWidth
-                    margin="normal"
-                    disabled={isInitializing}
-                    helperText="Add skills required for this position"
-                />
-                <Button
-                    type="button"
-                    onClick={handleAddRequirement}
-                    variant="outlined"
-                    size="small"
-                    sx={{ mt: 1 }}
-                    disabled={isInitializing}
-                >
-                    Add Skill
-                </Button>
-                <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {requirements.map((req, index) => (
-                        <Chip
-                            key={index}
-                            label={req}
-                            onDelete={() => handleDeleteRequirement(req)}
-                            disabled={isInitializing}
-                        />
-                    ))}
-                </Box>
-            </Box>
+            <TextField
+                label="Requirements"
+                value={requirements}
+                onChange={e => setRequirements(e.target.value)}
+                fullWidth
+                margin="normal"
+                multiline
+                rows={4}
+                disabled={isInitializing}
+                helperText="List the key requirements for this position (one per line)"
+                required
+            />
             <TextField
                 select
                 label="Status"

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Change to use Open Router API key
-const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+// Change back to using OpenAI API key
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
 interface CandidateData {
   bio: string;
@@ -16,8 +16,8 @@ export async function analyzeJobMatch(
   candidateData: CandidateData
 ) {
   if (!apiKey) {
-    console.error('Open Router API key is missing');
-    throw new Error('Open Router API key is not configured');
+    console.error('OpenAI API key is missing');
+    throw new Error('OpenAI API key is not configured');
   }
 
   try {
@@ -35,7 +35,7 @@ export async function analyzeJobMatch(
 
     // Construct prompt for AI model
     const prompt = `
-    I need to analyze how well a candidate matches a job position based on the following information:
+    I need to perform a comprehensive analysis of how well a candidate matches a job position. Please evaluate all aspects including skills, experience, education, responsibilities, and industry fit.
 
     JOB REQUIREMENTS:
     ${requirementsList}
@@ -53,10 +53,33 @@ export async function analyzeJobMatch(
     Certifications: 
     ${certificationsSummary || 'None provided'}
 
+    Please perform a detailed analysis including:
+    
+    1. SKILLS MATCHING:
+       - Extract specific skills mentioned in the candidate's bio and employment history
+       - Compare these skills with both explicit and implicit skills required in the job description
+       - Consider both technical and soft skills
+    
+    2. RESPONSIBILITY MATCHING:
+       - Compare the candidate's past job responsibilities with the responsibilities required for this position
+       - Identify similarities and gaps
+    
+    3. INDUSTRY EXPERIENCE:
+       - Analyze if the candidate has worked in the same or related industries
+       - Evaluate how transferable their industry experience is to this role
+    
+    4. EDUCATION RELEVANCE:
+       - Assess if the candidate's education aligns with job requirements
+       - Consider both formal education and professional certifications
+    
+    5. CERTIFICATION VALUE:
+       - Evaluate how relevant the candidate's certifications are to this specific role
+       - Consider certification issuer reputation and industry recognition
+
     Please analyze the match and provide:
     1. An overall match score as a percentage (0-100%)
-    2. Specific scores for Skills (0-100%), Education (0-100%), and Experience (0-100%)
-    3. For each job requirement, indicate if it's matched and provide a reason
+    2. Specific scores for Skills (0-100%), Education (0-100%), Experience (0-100%), Industry Fit (0-100%), and Responsibility Match (0-100%)
+    3. For each major job requirement, indicate if it's matched and provide a detailed reason
     
     Format your response as JSON with this structure:
     {
@@ -73,49 +96,62 @@ export async function analyzeJobMatch(
             }
           ]
         },
-        // Similar objects for Education and Experience
+        // Similar objects for Education, Experience, Industry Fit, and Responsibility Match
       ]
     }
     `;
 
-    // Call Open Router API instead of OpenAI
-    const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model: 'deepseek/deepseek-chat-v3-0324:free',
-        messages: [
-          { role: 'system', content: 'You are a skilled HR analyst evaluating job candidate matches.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://github.com/EdgarJob/ai-powered-ats', // Required by OpenRouter for attribution
-          'X-Title': 'AI Powered ATS' // Optional but good practice
+    console.log('🚀 Making API call to OpenAI...');
+    
+    // Call OpenAI API
+    try {
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are a skilled HR analyst evaluating job candidate matches.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          }
         }
+      );
+
+      console.log('✅ Received response from OpenAI!', {
+        model: response.data.model,
+        usage: response.data.usage,
+        responseFirstWords: response.data.choices[0].message.content.substring(0, 50) + '...'
+      });
+      
+      // Parse the JSON response from the AI
+      const resultContent = response.data.choices[0].message.content;
+      const jsonMatch = resultContent.match(/```json\n([\s\S]*?)\n```/) || 
+                        resultContent.match(/{[\s\S]*}/);
+      
+      let jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : resultContent;
+      
+      // Clean up any markers that might be around the JSON
+      if (jsonString.startsWith('```')) {
+        jsonString = jsonString.replace(/```json\n|```/g, '');
       }
-    );
 
-    // Parse the JSON response from the AI - same parsing logic but with OpenRouter response format
-    const resultContent = response.data.choices[0].message.content;
-    const jsonMatch = resultContent.match(/```json\n([\s\S]*?)\n```/) || 
-                      resultContent.match(/{[\s\S]*}/);
-    
-    let jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : resultContent;
-    
-    // Clean up any markers that might be around the JSON
-    if (jsonString.startsWith('```')) {
-      jsonString = jsonString.replace(/```json\n|```/g, '');
+      // Parse the JSON
+      return JSON.parse(jsonString);
+      
+    } catch (directApiError) {
+      console.error('OpenAI API call failed, using simulated matching:', directApiError);
+      // If the API call fails, use the fallback
+      return simulateMatching(jobRequirements, candidateData);
     }
-
-    // Parse the JSON
-    return JSON.parse(jsonString);
   } catch (error) {
-    console.error('Error analyzing job match:', error);
-    // Fallback to the simulated matching if API call fails
+    console.error('Error in overall job match process:', error);
+    // Final fallback
     return simulateMatching(jobRequirements, candidateData);
   }
 }

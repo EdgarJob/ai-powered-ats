@@ -497,12 +497,19 @@ export function JobsList() {
         // Get responsibilities directly
         const responsibilities = formData.get('responsibilities') as string;
 
+        // Parse requirements from text to array
+        const requirementsText = formData.get('requirements') as string;
+        const requirementsArray = requirementsText
+            ? requirementsText.split('\n').map(req => req.trim()).filter(req => req.length > 0)
+            : [];
+
         // Log the form data for debugging
         console.log('Form data:', {
             title: formData.get('title'),
             description: formData.get('description'),
             status: formData.get('status'),
             responsibilities: responsibilities,
+            requirements: requirementsArray,
             metadata: metadata
         });
 
@@ -510,7 +517,7 @@ export function JobsList() {
             title: formData.get('title') as string,
             description: formData.get('description') as string,
             status: formData.get('status') as Job['status'],
-            requirements: editingJob!.requirements, // Keep the same requirements for simplicity
+            requirements: requirementsArray,
             metadata: JSON.stringify(metadata),
             // Explicitly include responsibilities as a direct field, handle null vs undefined
             responsibilities: responsibilities || undefined
@@ -707,15 +714,18 @@ export function JobsList() {
                                 </Box>
                             )}
 
+                            {/* Display requirements in a similar format to responsibilities */}
                             <Box mb={2}>
                                 <Typography variant="subtitle1" fontWeight="600" mb={1}>Required Skills:</Typography>
-                                <Box component="ul" sx={{ paddingLeft: 2 }}>
-                                    {job.requirements.map((req, index) => (
-                                        <Box component="li" key={index}>
-                                            <Typography variant="body2">{req}</Typography>
-                                        </Box>
-                                    ))}
-                                </Box>
+                                <Typography variant="body2" sx={{
+                                    whiteSpace: 'pre-line',
+                                    bgcolor: '#f9f9f9',
+                                    p: 2,
+                                    borderRadius: 1,
+                                    border: '1px solid #eee'
+                                }}>
+                                    {job.requirements.join('\n')}
+                                </Typography>
                             </Box>
 
                             <Box display="flex" gap={2}>
@@ -798,6 +808,18 @@ export function JobsList() {
                                 multiline
                                 rows={4}
                                 helperText="List the key responsibilities of this position"
+                            />
+
+                            <TextField
+                                name="requirements"
+                                label="Requirements"
+                                defaultValue={editingJob.requirements.join('\n')}
+                                fullWidth
+                                margin="normal"
+                                multiline
+                                rows={4}
+                                helperText="List the key requirements for this position (one per line)"
+                                required
                             />
 
                             {/* Add metadata fields */}
