@@ -30,6 +30,7 @@ import WorkIcon from '@mui/icons-material/Work';
 import PersonIcon from '@mui/icons-material/Person';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
+import { analyzeJobMatch } from '../lib/openai-service';
 
 // Define interfaces for the data
 interface Job {
@@ -143,100 +144,48 @@ export function AIMatching() {
                 throw new Error('Selected job not found');
             }
 
-            // Here we would normally call an AI service API for real matching
-            // For demo purposes, we'll simulate AI matching with a simple algorithm
-
-            // Wait to simulate AI processing time
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            const matchResults: MatchResult[] = candidates.map(candidate => {
-                // Calculate basic skill match score
-                const skillMatches = selectedJobData.requirements.map(req => {
-                    const reqLower = req.toLowerCase();
-
-                    // Check if skill appears in various candidate fields
-                    const inBio = candidate.bio?.toLowerCase().includes(reqLower) || false;
-                    const inEmployment = candidate.employment_history?.some(
-                        job => job.position.toLowerCase().includes(reqLower) ||
-                            job.description?.toLowerCase().includes(reqLower)
-                    ) || false;
-                    const inCertifications = candidate.certifications?.some(
-                        cert => cert.name.toLowerCase().includes(reqLower)
-                    ) || false;
-
-                    const matched = inBio || inEmployment || inCertifications;
+            // Using OpenAI API for real AI-powered matching
+            const matchResultsPromises = candidates.map(async (candidate) => {
+                try {
+                    // Call OpenAI service
+                    const analysis = await analyzeJobMatch(
+                        selectedJobData.requirements,
+                        selectedJobData.description,
+                        {
+                            bio: candidate.bio || '',
+                            employment_history: candidate.employment_history || [],
+                            certifications: candidate.certifications || [],
+                            education_level: candidate.education_level || ''
+                        }
+                    );
 
                     return {
-                        requirement: req,
-                        matched: matched,
-                        reason: matched
-                            ? `Found "${req}" in candidate profile`
-                            : `Could not find "${req}" in candidate profile`
+                        candidateId: candidate.id,
+                        first_name: candidate.first_name,
+                        last_name: candidate.last_name,
+                        profile_picture_url: candidate.profile_picture_url,
+                        email: candidate.email,
+                        matchScore: analysis.overallScore,
+                        matchDetails: analysis.categoryScores
                     };
-                });
-
-                // Calculate education match
-                const educationMatch = {
-                    requirement: "Education",
-                    matched: !!candidate.education_level,
-                    reason: candidate.education_level
-                        ? `Candidate has ${candidate.education_level} education`
-                        : 'Education level not specified'
-                };
-
-                // Calculate experience match based on employment history
-                const experienceMatch = {
-                    requirement: "Experience",
-                    matched: candidate.employment_history?.length > 0,
-                    reason: candidate.employment_history?.length > 0
-                        ? `Candidate has ${candidate.employment_history.length} previous job(s)`
-                        : 'No employment history found'
-                };
-
-                // Calculate overall scores
-                const skillMatchScore = skillMatches.filter(m => m.matched).length / skillMatches.length;
-                const educationScore = educationMatch.matched ? 1 : 0;
-                const experienceScore = experienceMatch.matched ? 1 : 0;
-
-                // Final weighted score
-                const overallMatchScore = (
-                    skillMatchScore * 0.6 +
-                    educationScore * 0.2 +
-                    experienceScore * 0.2
-                ) * 100;
-
-                return {
-                    candidateId: candidate.id,
-                    first_name: candidate.first_name,
-                    last_name: candidate.last_name,
-                    profile_picture_url: candidate.profile_picture_url,
-                    email: candidate.email,
-                    matchScore: Math.round(overallMatchScore),
-                    matchDetails: [
-                        {
-                            category: 'Skills',
-                            score: skillMatchScore * 100,
-                            matches: skillMatches
-                        },
-                        {
-                            category: 'Education',
-                            score: educationScore * 100,
-                            matches: [educationMatch]
-                        },
-                        {
-                            category: 'Experience',
-                            score: experienceScore * 100,
-                            matches: [experienceMatch]
-                        }
-                    ]
-                };
+                } catch (err) {
+                    console.error(`Error analyzing candidate ${candidate.id}:`, err);
+                    // Return null for failed analysis to filter out later
+                    return null;
+                }
             });
 
-            // Sort by match score (highest first)
-            const sortedResults = matchResults.sort((a, b) => b.matchScore - a.matchScore);
+            // Wait for all promises to resolve
+            const results = await Promise.all(matchResultsPromises);
 
-            setMatchResults(sortedResults);
-            setSuccess(`Successfully matched ${sortedResults.length} candidates to this job`);
+            // Filter out failed analyses and sort by match score
+            const validResults = results
+                .filter((result) => result !== null)
+                .map(result => result as MatchResult)
+                .sort((a, b) => b.matchScore - a.matchScore);
+
+            setMatchResults(validResults);
+            setSuccess(`Successfully matched ${validResults.length} candidates to this job using AI`);
         } catch (err) {
             console.error('Error in AI matching:', err);
             setError('Failed to complete AI matching. Please try again.');
