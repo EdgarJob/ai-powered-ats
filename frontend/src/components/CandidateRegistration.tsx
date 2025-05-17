@@ -75,6 +75,13 @@ interface Employment {
     description: string;
 }
 
+interface ResumeVersion {
+    id: string;
+    name: string;
+    file: File | null;
+    fileName: string;
+}
+
 // Draft storage key
 const DRAFT_STORAGE_KEY = 'candidate_registration_draft';
 
@@ -96,6 +103,7 @@ interface DraftData {
     currency: string;
     activeStep: number;
     savedAt: string;
+    resumeVersions: ResumeVersion[];
 }
 
 // Custom styled components
@@ -158,6 +166,9 @@ export function CandidateRegistration() {
     const [currency, setCurrency] = useState<string>('TZS'); // Default to TZS
     const [resume, setResume] = useState<File | null>(null);
     const [resumeName, setResumeName] = useState<string>('');
+    const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([
+        { id: uuidv4(), name: 'Default CV', file: null, fileName: '' }
+    ]);
 
     // UI state
     const [activeStep, setActiveStep] = useState(0);
@@ -255,6 +266,9 @@ export function CandidateRegistration() {
                 setEmploymentHistory(parsedDraft.employmentHistory);
                 setCurrentSalary(parsedDraft.currentSalary);
                 setCurrency(parsedDraft.currency);
+                if (parsedDraft.resumeVersions) {
+                    setResumeVersions(parsedDraft.resumeVersions);
+                }
 
                 // Set active step
                 setActiveStep(parsedDraft.activeStep);
@@ -297,7 +311,13 @@ export function CandidateRegistration() {
                 currentSalary,
                 currency,
                 activeStep,
-                savedAt: new Date().toISOString()
+                savedAt: new Date().toISOString(),
+                resumeVersions: resumeVersions.map(rv => ({
+                    id: rv.id,
+                    name: rv.name,
+                    fileName: rv.fileName,
+                    file: null // We can't store File objects in localStorage
+                })),
             };
 
             // Save to localStorage
@@ -566,6 +586,38 @@ export function CandidateRegistration() {
         }, 0);
     };
 
+    // Handle resume change for a specific version
+    const handleResumeVersionChange = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setResumeVersions(prev => prev.map(rv =>
+                rv.id === id ? { ...rv, file, fileName: file.name } : rv
+            ));
+        }
+    };
+
+    // Add a new resume version
+    const addResumeVersion = () => {
+        setResumeVersions(prev => [
+            ...prev,
+            { id: uuidv4(), name: `CV Version ${prev.length + 1}`, file: null, fileName: '' }
+        ]);
+    };
+
+    // Remove a resume version
+    const removeResumeVersion = (id: string) => {
+        if (resumeVersions.length > 1) {
+            setResumeVersions(prev => prev.filter(rv => rv.id !== id));
+        }
+    };
+
+    // Update resume version name
+    const updateResumeVersionName = (id: string, name: string) => {
+        setResumeVersions(prev => prev.map(rv =>
+            rv.id === id ? { ...rv, name } : rv
+        ));
+    };
+
     // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -588,12 +640,19 @@ export function CandidateRegistration() {
                 }
             }
 
-            // Upload resume if provided
-            let resumeUrl = null;
-            if (resume) {
-                resumeUrl = await uploadFile(resume, 'resumes', 'candidates');
-                if (!resumeUrl) {
-                    throw new Error('Failed to upload resume');
+            // Upload all resume versions if provided
+            const uploadedResumeVersions = [];
+            for (const version of resumeVersions) {
+                if (version.file) {
+                    const resumeUrl = await uploadFile(version.file, 'resumes', 'candidates');
+                    if (resumeUrl) {
+                        uploadedResumeVersions.push({
+                            id: uuidv4(),
+                            version_name: version.name,
+                            file_url: resumeUrl,
+                            is_default: version === resumeVersions[0] // First one is default
+                        });
+                    }
                 }
             }
 
@@ -615,7 +674,7 @@ export function CandidateRegistration() {
                 employment_history: employmentHistory.filter(emp => emp.company && emp.position),
                 current_salary: currentSalary ? parseFloat(currentSalary.replace(/,/g, '')) : undefined,
                 salary_currency: currency,
-                resume_url: resumeUrl || undefined,
+                resume_url: uploadedResumeVersions.length > 0 ? uploadedResumeVersions[0].file_url : undefined,
                 created_at: new Date().toISOString()
             };
 
@@ -627,6 +686,23 @@ export function CandidateRegistration() {
             if (insertError) {
                 console.error('Error inserting candidate data:', insertError);
                 throw new Error(insertError.message);
+            }
+
+            // Insert all resume versions into candidate_resumes table
+            if (uploadedResumeVersions.length > 0) {
+                const resumeVersionsData = uploadedResumeVersions.map(version => ({
+                    ...version,
+                    candidate_id: candidateId
+                }));
+
+                const { error: resumeError } = await supabaseAdmin
+                    .from('candidate_resumes')
+                    .insert(resumeVersionsData);
+
+                if (resumeError) {
+                    console.error('Error inserting resume versions:', resumeError);
+                    // Not throwing error here as the candidate was already created
+                }
             }
 
             // Success! 
@@ -1010,14 +1086,46 @@ export function CandidateRegistration() {
                 );
 
             case 3:
-                return (
-                    <Box>
-                        <Typography variant="h6" gutterBottom>Documents & Review</Typography>
+                return renderDocumentsSection();
 
-                        <Paper sx={{ p: 3, mb: 4 }}>
-                            <Typography variant="subtitle1" gutterBottom>
-                                Upload Resume (Optional)
-                            </Typography>
+            default:
+                return null;
+        }
+    };
+
+    const renderDocumentsSection = () => {
+        return (
+            <Box>
+                <Typography variant="h6" gutterBottom>Documents & Review</Typography>
+
+                <Paper sx={{ p: 3, mb: 4 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                        Upload Resumes/CVs
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+                        You can upload multiple versions of your CV to use for different job applications.
+                    </Typography>
+
+                    {resumeVersions.map((version, index) => (
+                        <Box key={version.id} sx={{ mb: 3, p: 2, border: '1px solid #eee', borderRadius: 2 }}>
+                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                                <TextField
+                                    label="Version Name"
+                                    value={version.name}
+                                    onChange={(e) => updateResumeVersionName(version.id, e.target.value)}
+                                    size="small"
+                                    sx={{ width: '60%' }}
+                                />
+                                {resumeVersions.length > 1 && (
+                                    <IconButton
+                                        onClick={() => removeResumeVersion(version.id)}
+                                        size="small"
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+                                )}
+                            </Box>
+
                             <Box display="flex" alignItems="center">
                                 <Button
                                     component="label"
@@ -1025,147 +1133,159 @@ export function CandidateRegistration() {
                                     startIcon={<CloudUploadIcon />}
                                     sx={{ mr: 2 }}
                                 >
-                                    Select Resume
+                                    Select File
                                     <VisuallyHiddenInput
                                         type="file"
                                         accept=".pdf,.doc,.docx"
-                                        onChange={handleResumeChange}
-                                        ref={resumeInputRef}
+                                        onChange={(e) => handleResumeVersionChange(version.id, e)}
                                     />
                                 </Button>
                                 <Typography>
-                                    {resumeName || 'No file selected'}
+                                    {version.fileName || 'No file selected'}
                                 </Typography>
                             </Box>
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                Accepted formats: PDF, DOC, DOCX. Max size: 10MB
-                            </Typography>
+                            {index === 0 && (
+                                <Typography variant="caption" color="primary" sx={{ mt: 1, display: 'block' }}>
+                                    This is your default resume and will be used when creating your profile.
+                                </Typography>
+                            )}
+                        </Box>
+                    ))}
+
+                    <Button
+                        startIcon={<AddIcon />}
+                        onClick={addResumeVersion}
+                        variant="outlined"
+                        sx={{ mt: 1 }}
+                    >
+                        Add Another CV Version
+                    </Button>
+
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+                        Accepted formats: PDF, DOC, DOCX. Max size: 10MB per file
+                    </Typography>
+                </Paper>
+
+                <Typography variant="h6" gutterBottom>
+                    Review Your Information
+                </Typography>
+
+                <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                        <Paper sx={{ p: 2 }}>
+                            <Typography variant="subtitle1" fontWeight="bold">Personal Details</Typography>
+                            <Box mt={2}>
+                                <Grid container spacing={1}>
+                                    <Grid item xs={5}>
+                                        <Typography variant="body2" color="text.secondary">Name:</Typography>
+                                    </Grid>
+                                    <Grid item xs={7}>
+                                        <Typography variant="body2">{firstName} {lastName}</Typography>
+                                    </Grid>
+
+                                    <Grid item xs={5}>
+                                        <Typography variant="body2" color="text.secondary">Email:</Typography>
+                                    </Grid>
+                                    <Grid item xs={7}>
+                                        <Typography variant="body2">{email}</Typography>
+                                    </Grid>
+
+                                    <Grid item xs={5}>
+                                        <Typography variant="body2" color="text.secondary">Phone:</Typography>
+                                    </Grid>
+                                    <Grid item xs={7}>
+                                        <Typography variant="body2">{phone || 'Not provided'}</Typography>
+                                    </Grid>
+
+                                    <Grid item xs={5}>
+                                        <Typography variant="body2" color="text.secondary">Gender:</Typography>
+                                    </Grid>
+                                    <Grid item xs={7}>
+                                        <Typography variant="body2">{gender || 'Not provided'}</Typography>
+                                    </Grid>
+
+                                    <Grid item xs={5}>
+                                        <Typography variant="body2" color="text.secondary">Location:</Typography>
+                                    </Grid>
+                                    <Grid item xs={7}>
+                                        <Typography variant="body2">{location || 'Not provided'}</Typography>
+                                    </Grid>
+
+                                    <Grid item xs={5}>
+                                        <Typography variant="body2" color="text.secondary">Date of Birth:</Typography>
+                                    </Grid>
+                                    <Grid item xs={7}>
+                                        <Typography variant="body2">{dateOfBirth ? new Date(dateOfBirth).toLocaleDateString() : 'Not provided'}</Typography>
+                                    </Grid>
+                                </Grid>
+                            </Box>
                         </Paper>
+                    </Grid>
 
-                        <Typography variant="h6" gutterBottom>
-                            Review Your Information
-                        </Typography>
+                    <Grid item xs={12} md={6}>
+                        <Paper sx={{ p: 2 }}>
+                            <Typography variant="subtitle1" fontWeight="bold">Education & Certifications</Typography>
+                            <Box mt={2}>
+                                <Typography variant="body2" color="text.secondary">Education Level:</Typography>
+                                <Typography variant="body2" mb={1}>{educationLevel || 'Not provided'}</Typography>
 
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
-                                <Paper sx={{ p: 2 }}>
-                                    <Typography variant="subtitle1" fontWeight="bold">Personal Details</Typography>
-                                    <Box mt={2}>
-                                        <Grid container spacing={1}>
-                                            <Grid item xs={5}>
-                                                <Typography variant="body2" color="text.secondary">Name:</Typography>
-                                            </Grid>
-                                            <Grid item xs={7}>
-                                                <Typography variant="body2">{firstName} {lastName}</Typography>
-                                            </Grid>
+                                <Typography variant="body2" color="text.secondary">Certifications:</Typography>
+                                {certifications.filter(c => c.name && c.issuer).length > 0 ? (
+                                    certifications.filter(c => c.name && c.issuer).map((cert, index) => (
+                                        <Typography key={cert.id} variant="body2">
+                                            {index + 1}. {cert.name} by {cert.issuer}
+                                            {cert.date_acquired && ` (${new Date(cert.date_acquired).toLocaleDateString()})`}
+                                        </Typography>
+                                    ))
+                                ) : (
+                                    <Typography variant="body2">No certifications added</Typography>
+                                )}
+                            </Box>
+                        </Paper>
+                    </Grid>
 
-                                            <Grid item xs={5}>
-                                                <Typography variant="body2" color="text.secondary">Email:</Typography>
-                                            </Grid>
-                                            <Grid item xs={7}>
-                                                <Typography variant="body2">{email}</Typography>
-                                            </Grid>
-
-                                            <Grid item xs={5}>
-                                                <Typography variant="body2" color="text.secondary">Phone:</Typography>
-                                            </Grid>
-                                            <Grid item xs={7}>
-                                                <Typography variant="body2">{phone || 'Not provided'}</Typography>
-                                            </Grid>
-
-                                            <Grid item xs={5}>
-                                                <Typography variant="body2" color="text.secondary">Gender:</Typography>
-                                            </Grid>
-                                            <Grid item xs={7}>
-                                                <Typography variant="body2">{gender || 'Not provided'}</Typography>
-                                            </Grid>
-
-                                            <Grid item xs={5}>
-                                                <Typography variant="body2" color="text.secondary">Location:</Typography>
-                                            </Grid>
-                                            <Grid item xs={7}>
-                                                <Typography variant="body2">{location || 'Not provided'}</Typography>
-                                            </Grid>
-
-                                            <Grid item xs={5}>
-                                                <Typography variant="body2" color="text.secondary">Date of Birth:</Typography>
-                                            </Grid>
-                                            <Grid item xs={7}>
-                                                <Typography variant="body2">{dateOfBirth ? new Date(dateOfBirth).toLocaleDateString() : 'Not provided'}</Typography>
-                                            </Grid>
-                                        </Grid>
-                                    </Box>
-                                </Paper>
-                            </Grid>
-
-                            <Grid item xs={12} md={6}>
-                                <Paper sx={{ p: 2 }}>
-                                    <Typography variant="subtitle1" fontWeight="bold">Education & Certifications</Typography>
-                                    <Box mt={2}>
-                                        <Typography variant="body2" color="text.secondary">Education Level:</Typography>
-                                        <Typography variant="body2" mb={1}>{educationLevel || 'Not provided'}</Typography>
-
-                                        <Typography variant="body2" color="text.secondary">Certifications:</Typography>
-                                        {certifications.filter(c => c.name && c.issuer).length > 0 ? (
-                                            certifications.filter(c => c.name && c.issuer).map((cert, index) => (
-                                                <Typography key={cert.id} variant="body2">
-                                                    {index + 1}. {cert.name} by {cert.issuer}
-                                                    {cert.date_acquired && ` (${new Date(cert.date_acquired).toLocaleDateString()})`}
+                    <Grid item xs={12}>
+                        <Paper sx={{ p: 2 }}>
+                            <Typography variant="subtitle1" fontWeight="bold">Employment History</Typography>
+                            <Box mt={2}>
+                                {employmentHistory.filter(e => e.company && e.position).length > 0 ? (
+                                    employmentHistory.filter(e => e.company && e.position).map((emp, index) => (
+                                        <Box key={emp.id} mb={index < employmentHistory.length - 1 ? 2 : 0}>
+                                            <Typography variant="body2" fontWeight="bold">
+                                                {emp.position} at {emp.company}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {emp.start_date ? new Date(emp.start_date).toLocaleDateString() : '?'} -
+                                                {emp.is_current ? ' Present' : emp.end_date ? ` ${new Date(emp.end_date).toLocaleDateString()}` : ' ?'}
+                                            </Typography>
+                                            {emp.description && (
+                                                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                                    {emp.description}
                                                 </Typography>
-                                            ))
-                                        ) : (
-                                            <Typography variant="body2">No certifications added</Typography>
-                                        )}
-                                    </Box>
-                                </Paper>
-                            </Grid>
+                                            )}
+                                            {index < employmentHistory.filter(e => e.company && e.position).length - 1 && <Divider sx={{ mt: 1.5 }} />}
+                                        </Box>
+                                    ))
+                                ) : (
+                                    <Typography variant="body2">No employment history added</Typography>
+                                )}
 
-                            <Grid item xs={12}>
-                                <Paper sx={{ p: 2 }}>
-                                    <Typography variant="subtitle1" fontWeight="bold">Employment History</Typography>
+                                {currentSalary && (
                                     <Box mt={2}>
-                                        {employmentHistory.filter(e => e.company && e.position).length > 0 ? (
-                                            employmentHistory.filter(e => e.company && e.position).map((emp, index) => (
-                                                <Box key={emp.id} mb={index < employmentHistory.length - 1 ? 2 : 0}>
-                                                    <Typography variant="body2" fontWeight="bold">
-                                                        {emp.position} at {emp.company}
-                                                    </Typography>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        {emp.start_date ? new Date(emp.start_date).toLocaleDateString() : '?'} -
-                                                        {emp.is_current ? ' Present' : emp.end_date ? ` ${new Date(emp.end_date).toLocaleDateString()}` : ' ?'}
-                                                    </Typography>
-                                                    {emp.description && (
-                                                        <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                                            {emp.description}
-                                                        </Typography>
-                                                    )}
-                                                    {index < employmentHistory.filter(e => e.company && e.position).length - 1 && <Divider sx={{ mt: 1.5 }} />}
-                                                </Box>
-                                            ))
-                                        ) : (
-                                            <Typography variant="body2">No employment history added</Typography>
-                                        )}
-
-                                        {currentSalary && (
-                                            <Box mt={2}>
-                                                <Typography variant="body2" color="text.secondary">Current Take-Home Salary:</Typography>
-                                                <Typography variant="body2">
-                                                    {currency === 'TZS' ?
-                                                        `${currentSalary} TZS` :
-                                                        `$${currentSalary} USD`} (Monthly)
-                                                </Typography>
-                                            </Box>
-                                        )}
+                                        <Typography variant="body2" color="text.secondary">Current Take-Home Salary:</Typography>
+                                        <Typography variant="body2">
+                                            {currency === 'TZS' ?
+                                                `${currentSalary} TZS` :
+                                                `$${currentSalary} USD`} (Monthly)
+                                        </Typography>
                                     </Box>
-                                </Paper>
-                            </Grid>
-                        </Grid>
-                    </Box>
-                );
-
-            default:
-                return <Box>Unknown step</Box>;
-        }
+                                )}
+                            </Box>
+                        </Paper>
+                    </Grid>
+                </Grid>
+            </Box>
+        );
     };
 
     return (

@@ -11,7 +11,7 @@ export function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Apply for Jobs', href: '/' },
+    { name: 'Current Job Openings', href: '/' },
     { name: 'Register as Candidate', href: '/register' },
     { name: 'View Candidates', href: '/candidates' },
     { name: 'Job Management', href: '/jobs' },

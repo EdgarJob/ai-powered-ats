@@ -150,100 +150,57 @@ export function JobsList() {
                     responsibilities?: string
                 } = {};
 
-                // Extract metadata
+                // Extract metadata - handle both string and object formats
                 if (job.metadata) {
                     try {
-                        metadata = typeof job.metadata === 'string'
-                            ? JSON.parse(job.metadata)
-                            : job.metadata;
+                        console.log(`Raw metadata for job ${job.id}:`, job.metadata);
+
+                        if (typeof job.metadata === 'string') {
+                            // Parse if it's a string
+                            metadata = JSON.parse(job.metadata);
+                            console.log(`Parsed metadata for job ${job.id} from string:`, metadata);
+                        } else if (typeof job.metadata === 'object') {
+                            // Direct assignment if it's already an object
+                            metadata = job.metadata;
+                            console.log(`Used object metadata for job ${job.id}:`, metadata);
+                        }
                     } catch (e) {
                         console.error('Error parsing metadata for job', job.id, e);
                     }
-                }
-
-                // Try to get metadata from localStorage as a fallback
-                try {
-                    const localMetadata = localStorage.getItem(`job_${job.id}_metadata`);
-                    if (localMetadata) {
-                        // Merge database metadata with localStorage metadata
-                        metadata = {
-                            ...metadata,
-                            ...JSON.parse(localMetadata)
-                        };
-                        console.log('Retrieved metadata from localStorage for job', job.id, metadata);
-                    }
-                } catch (e) {
-                    console.error('Error retrieving localStorage metadata for job', job.id, e);
-                }
-
-                // Log what's happening with responsibilities specifically
-                if (metadata.responsibilities) {
-                    console.log(`Job ${job.id} has responsibilities in metadata:`, metadata.responsibilities);
                 } else {
-                    console.log(`Job ${job.id} has NO responsibilities in metadata`);
+                    console.log(`No metadata found for job ${job.id}`);
                 }
 
-                // Check for responsibilities in dedicated localStorage key
-                let localResponsibilities = null;
-                try {
-                    const localRespData = localStorage.getItem(`job_${job.id}_responsibilities`);
-                    if (localRespData) {
-                        const respObj = JSON.parse(localRespData);
-                        if (respObj.responsibilities) {
-                            localResponsibilities = respObj.responsibilities;
-                            console.log(`Job ${job.id} has responsibilities in dedicated localStorage:`, localResponsibilities);
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error retrieving dedicated responsibilities from localStorage', e);
-                }
+                // Make sure we extract the values if they exist
+                const industry = metadata?.industry || null;
+                const location = metadata?.location || null;
+                const field = metadata?.field || null;
+                const deadline = metadata?.deadline || null;
 
-                // Get responsibilities from different sources with fallback support
-                let jobResponsibilities = null;
-
-                // 1. First try direct responsibilities column (most reliable)
-                if (job.responsibilities) {
-                    jobResponsibilities = job.responsibilities;
-                    console.log(`Job ${job.id} has responsibilities directly in column:`, jobResponsibilities);
-                }
-                // 2. Then try metadata
-                else if (metadata.responsibilities) {
-                    jobResponsibilities = metadata.responsibilities;
-                    console.log(`Job ${job.id} has responsibilities in metadata:`, jobResponsibilities);
-                }
-                // 3. Finally try localStorage
-                else {
-                    try {
-                        const localRespData = localStorage.getItem(`job_${job.id}_responsibilities`);
-                        if (localRespData) {
-                            const respObj = JSON.parse(localRespData);
-                            if (respObj.responsibilities) {
-                                jobResponsibilities = respObj.responsibilities;
-                                console.log(`Job ${job.id} has responsibilities in localStorage:`, jobResponsibilities);
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error retrieving responsibilities from localStorage', e);
-                    }
-                }
-
-                // If we found responsibilities from any source but not in the direct column,
-                // trigger a background migration
-                if (jobResponsibilities && !job.responsibilities) {
-                    console.log(`Need to migrate responsibilities for job ${job.id}`);
-                    migrateResponsibilities({ ...job, responsibilities: jobResponsibilities });
-                }
+                console.log(`Extracted metadata for job ${job.id}:`, {
+                    industry, location, field, deadline
+                });
 
                 // Return the processed job with all attributes
                 return {
                     ...job,
-                    deadline: metadata.deadline || null,
-                    industry: metadata.industry || null,
-                    location: metadata.location || null,
-                    field: metadata.field || null,
-                    responsibilities: jobResponsibilities
+                    deadline: deadline,
+                    industry: industry,
+                    location: location,
+                    field: field,
+                    responsibilities: job.responsibilities || metadata.responsibilities || null
                 };
             });
+
+            // Log the processed jobs for debugging
+            console.log('Processed jobs with metadata:', processedJobs?.map(job => ({
+                id: job.id,
+                title: job.title,
+                industry: job.industry,
+                location: job.location,
+                field: job.field,
+                metadata: job.metadata
+            })));
 
             return processedJobs as Job[];
         },
@@ -291,36 +248,41 @@ export function JobsList() {
         return sortOrder === 'asc' ? ' ↑' : ' ↓';
     };
 
-    // Force refresh when form is successfully submitted
+    // Handle when a new job is added
     const handleJobAdded = () => {
-        console.log('Job added, refreshing list...');
+        console.log('Job added successfully');
+
+        // Just increment the refresh trigger to cause a re-fetch in the background
+        // This is still needed for new jobs since we don't have the new job data yet
         setRefreshTrigger(prev => prev + 1);
-        refetch();
+
+        // Close the add job form
         setShowAddJob(false);
     };
 
     // Delete a job
     const handleDeleteJob = async (jobId: string) => {
-        if (!window.confirm('Are you sure you want to delete this job? This cannot be undone.')) {
-            return;
-        }
+        if (!confirm('Are you sure you want to delete this job posting?')) return;
 
         try {
-            console.log('Deleting job:', jobId);
-            const { error: deleteError } = await supabaseAdmin
+            const { error } = await supabaseAdmin
                 .from('jobs')
                 .delete()
                 .eq('id', jobId);
 
-            if (deleteError) {
-                console.error('Error deleting job:', deleteError);
-                alert('Failed to delete job: ' + deleteError.message);
-                return;
+            if (error) throw error;
+
+            // Update the local state by removing the deleted job
+            if (jobs) {
+                const updatedJobs = jobs.filter(job => job.id !== jobId);
+
+                // Update the cached data
+                queryClient.setQueryData(['jobs', refreshTrigger], updatedJobs);
             }
 
-            // Refresh the job list
-            console.log('Job deleted successfully');
-            refetch();
+            // Also remove any localStorage items related to this job
+            localStorage.removeItem(`job_${jobId}_metadata`);
+            localStorage.removeItem(`job_${jobId}_responsibilities`);
         } catch (err) {
             console.error('Error deleting job:', err);
             alert('Failed to delete job');
@@ -440,11 +402,39 @@ export function JobsList() {
                 }
             }
 
-            // Refresh the job list and exit edit mode
+            // Success! Update the job in the local state without full page refresh
             console.log('Job update process complete');
+
+            // Parse metadata for the update
+            const metadataObj = metadata ?
+                (typeof metadata === 'string' ? JSON.parse(metadata) : metadata) :
+                {};
+
+            // Create the processed job with updated values
+            const updatedProcessedJob = {
+                ...editingJob,
+                ...baseJobData,
+                responsibilities: responsibilities || editingJob.responsibilities,
+                metadata: metadataObj,
+                // Update extracted metadata fields
+                industry: metadataObj?.industry || editingJob.industry,
+                location: metadataObj?.location || editingJob.location,
+                field: metadataObj?.field || editingJob.field,
+                deadline: metadataObj?.deadline || editingJob.deadline
+            };
+
+            // Update the jobs array with the edited job
+            if (jobs) {
+                const updatedJobs = jobs.map(job =>
+                    job.id === editingJob.id ? updatedProcessedJob : job
+                );
+
+                // Use the queryClient to update the cached data without refetching
+                queryClient.setQueryData(['jobs', refreshTrigger], updatedJobs);
+            }
+
+            // Clear the editing state
             setEditingJob(null);
-            setRefreshTrigger(prev => prev + 1); // Force refresh
-            refetch();
         } catch (err) {
             console.error('Error updating job:', err);
             // Show full error details
@@ -464,8 +454,15 @@ export function JobsList() {
 
             if (error) throw error;
 
-            // Force refresh the jobs list
-            refetch();
+            // Update the job in the local state without refetching
+            if (jobs) {
+                const updatedJobs = jobs.map(job =>
+                    job.id === jobId ? { ...job, status: newStatus } : job
+                );
+
+                // Update the cached data
+                queryClient.setQueryData(['jobs', refreshTrigger], updatedJobs);
+            }
         } catch (err) {
             console.error('Error updating job status:', err);
         }
@@ -663,25 +660,49 @@ export function JobsList() {
                                     )}
 
                                     {/* Display additional fields from metadata if available */}
-                                    {(job.industry || job.location || job.field) && (
-                                        <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap={2} mt={2} mb={2}>
-                                            {job.industry && (
-                                                <Typography variant="body2">
-                                                    <strong>Industry:</strong> {job.industry}
-                                                </Typography>
-                                            )}
-                                            {job.location && (
-                                                <Typography variant="body2">
-                                                    <strong>Location:</strong> {job.location}
-                                                </Typography>
-                                            )}
-                                            {job.field && (
-                                                <Typography variant="body2">
-                                                    <strong>Field:</strong> {job.field}
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    )}
+                                    <Box
+                                        sx={{
+                                            bgcolor: '#f8f9fa',
+                                            p: 2,
+                                            borderRadius: 1,
+                                            border: '1px solid #e0e0e0',
+                                            mt: 2,
+                                            mb: 2,
+                                            display: 'grid',
+                                            gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+                                            gap: 2
+                                        }}
+                                    >
+                                        {job.industry ? (
+                                            <Typography variant="body2">
+                                                <strong>Industry:</strong> {job.industry}
+                                            </Typography>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary">
+                                                <strong>Industry:</strong> Not specified
+                                            </Typography>
+                                        )}
+
+                                        {job.location ? (
+                                            <Typography variant="body2">
+                                                <strong>Location:</strong> {job.location}
+                                            </Typography>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary">
+                                                <strong>Location:</strong> Not specified
+                                            </Typography>
+                                        )}
+
+                                        {job.field ? (
+                                            <Typography variant="body2">
+                                                <strong>Field:</strong> {job.field}
+                                            </Typography>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary">
+                                                <strong>Field:</strong> Not specified
+                                            </Typography>
+                                        )}
+                                    </Box>
                                 </Box>
                                 <FormControl sx={{ minWidth: 120 }}>
                                     <Select

@@ -5,6 +5,7 @@ import { ThemeProvider, createTheme } from '@mui/material';
 import { useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { JobsList } from './components/JobsList';
+import { JobOpenings } from './components/JobOpenings';
 import { JobApplicationForm } from './components/AddCandidateForm';
 import { CandidateRegistration } from './components/CandidateRegistration';
 import { addMetadataColumnToJobs, addResponsibilitiesColumn, updateCandidatesTableSchema } from './lib/database-helpers';
@@ -17,6 +18,7 @@ import { JobDebugPanel, StorageDebugPanel } from './components/Debug';
 import { CandidatesList } from './components/CandidatesList';
 import { Dashboard } from './components/Dashboard';
 import { AIMatching } from './components/AIMatching';
+import { JobApplicationForm as JobApplication } from './components/JobApplication';
 
 // Create a theme instance with Apple-like design
 const theme = createTheme({
@@ -122,9 +124,10 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<JobApplicationForm />} />
+      <Route path="/" element={<JobOpenings />} />
       <Route path="/jobs" element={<JobsList />} />
-      <Route path="/apply/:jobId" element={<JobApplicationForm />} />
+      <Route path="/job-openings" element={<JobOpenings />} />
+      <Route path="/apply/:jobId" element={<JobApplication />} />
       <Route path="/debug" element={<DebugPanel />} />
       <Route path="/fix-jobs" element={<JobDebugPanel />} />
       <Route path="/register" element={<CandidateRegistration />} />
