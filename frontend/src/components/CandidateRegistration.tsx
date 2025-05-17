@@ -34,7 +34,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SaveIcon from '@mui/icons-material/Save';
 import { supabaseAdmin } from '../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Database } from '../lib/database.types';
 
 // Types for form data
@@ -133,8 +133,12 @@ const isValidPhone = (phone: string): boolean => {
 
 export function CandidateRegistration() {
     const navigate = useNavigate();
+    const location = useLocation();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const resumeInputRef = useRef<HTMLInputElement>(null);
+
+    // Extract returnTo URL from location state if present
+    const returnTo = location.state?.returnTo || '/';
 
     // Form state
     const [firstName, setFirstName] = useState('');
@@ -143,7 +147,7 @@ export function CandidateRegistration() {
     const [phone, setPhone] = useState('');
     const [bio, setBio] = useState('');
     const [gender, setGender] = useState('');
-    const [location, setLocation] = useState('');
+    const [userLocation, setUserLocation] = useState('');
     const [dateOfBirth, setDateOfBirth] = useState('');
     const [profilePic, setProfilePic] = useState<File | null>(null);
     const [profilePicPreview, setProfilePicPreview] = useState<string | null>(null);
@@ -258,7 +262,7 @@ export function CandidateRegistration() {
                 setPhone(parsedDraft.phone);
                 setBio(parsedDraft.bio);
                 setGender(parsedDraft.gender);
-                setLocation(parsedDraft.location);
+                setUserLocation(parsedDraft.location);
                 setDateOfBirth(parsedDraft.dateOfBirth);
                 setProfilePicPreview(parsedDraft.profilePicPreview);
                 setEducationLevel(parsedDraft.educationLevel);
@@ -302,7 +306,7 @@ export function CandidateRegistration() {
                 phone,
                 bio,
                 gender,
-                location,
+                location: userLocation,
                 dateOfBirth,
                 profilePicPreview,
                 educationLevel,
@@ -666,7 +670,7 @@ export function CandidateRegistration() {
                 phone: phone,
                 bio: bio,
                 gender: gender,
-                location: location,
+                location: userLocation,
                 date_of_birth: dateOfBirth,
                 profile_picture_url: profilePicUrl || undefined,
                 education_level: educationLevel,
@@ -711,8 +715,9 @@ export function CandidateRegistration() {
             // Clear the draft after successful submission
             clearDraft();
 
+            // Check if we need to redirect to a specific page (like a job application)
             setTimeout(() => {
-                navigate('/');
+                navigate(returnTo);
             }, 3000);
 
         } catch (err) {
@@ -797,8 +802,8 @@ export function CandidateRegistration() {
                                 <TextField
                                     fullWidth
                                     label="Location"
-                                    value={location}
-                                    onChange={(e) => setLocation(e.target.value)}
+                                    value={userLocation}
+                                    onChange={(e) => setUserLocation(e.target.value)}
                                     placeholder="City, Country"
                                 />
                             </Grid>
@@ -1208,7 +1213,7 @@ export function CandidateRegistration() {
                                         <Typography variant="body2" color="text.secondary">Location:</Typography>
                                     </Grid>
                                     <Grid item xs={7}>
-                                        <Typography variant="body2">{location || 'Not provided'}</Typography>
+                                        <Typography variant="body2">{userLocation || 'Not provided'}</Typography>
                                     </Grid>
 
                                     <Grid item xs={5}>

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Typography, Button, Select, MenuItem, FormControl, InputLabel, Alert, TextField, Card, CardContent, Chip, CircularProgress } from '@mui/material';
-import { supabaseAdmin } from '../lib/supabase';
+import { Box, Typography, Button, Select, MenuItem, FormControl, InputLabel, Alert, TextField, Card, CardContent, Chip, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { supabaseAdmin, supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import type { Job } from '../lib/database.types';
 
@@ -17,6 +17,8 @@ export function JobOpenings() {
     const [sortField, setSortField] = useState<SortField>('created_at');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc'); // Default to newest first
     const [searchTerm, setSearchTerm] = useState('');
+    const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+    const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
     const navigate = useNavigate();
 
@@ -136,8 +138,25 @@ export function JobOpenings() {
     };
 
     // Handle apply button click
-    const handleApply = (jobId: string) => {
-        navigate(`/apply/${jobId}`);
+    const handleApply = async (jobId: string) => {
+        // Check if user is authenticated
+        const { data } = await supabase.auth.getUser();
+
+        if (data.user) {
+            // User is authenticated, navigate to application page
+            navigate(`/apply/${jobId}`);
+        } else {
+            // User is not authenticated, show login/register dialog
+            setSelectedJobId(jobId);
+            setIsLoginDialogOpen(true);
+        }
+    };
+
+    // Handle login action
+    const handleLogin = () => {
+        setIsLoginDialogOpen(false);
+        // Navigate to login page with return URL
+        navigate('/register', { state: { returnTo: selectedJobId ? `/apply/${selectedJobId}` : '/' } });
     };
 
     // Check if a job deadline has passed
@@ -391,6 +410,26 @@ export function JobOpenings() {
                     ))}
                 </Box>
             )}
+
+            {/* Login Dialog */}
+            <Dialog open={isLoginDialogOpen} onClose={() => setIsLoginDialogOpen(false)}>
+                <DialogTitle>Authentication Required</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        You need to be logged in to apply for this job. Would you like to login or register now?
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setIsLoginDialogOpen(false)}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleLogin}
+                    >
+                        Login / Register
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 } 
