@@ -19,6 +19,9 @@ import { CandidatesList } from './components/CandidatesList';
 import { Dashboard } from './components/Dashboard';
 import { AIMatching } from './components/AIMatching';
 import { JobApplicationForm as JobApplication } from './components/JobApplication';
+import { Login } from './components/Login';
+import { AuthProvider } from './lib/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Create a theme instance with Apple-like design
 const theme = createTheme({
@@ -124,17 +127,71 @@ const AppRoutes = () => {
 
   return (
     <Routes>
+      {/* Public routes */}
       <Route path="/" element={<JobOpenings />} />
-      <Route path="/jobs" element={<JobsList />} />
-      <Route path="/job-openings" element={<JobOpenings />} />
-      <Route path="/apply/:jobId" element={<JobApplication />} />
-      <Route path="/debug" element={<DebugPanel />} />
-      <Route path="/fix-jobs" element={<JobDebugPanel />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/register" element={<CandidateRegistration />} />
-      <Route path="/storage-debug" element={<StorageDebugPanel />} />
-      <Route path="/candidates" element={<CandidatesList />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/ai-matching" element={<AIMatching />} />
+      <Route path="/apply/:jobId" element={<JobApplication />} />
+
+      {/* Admin-only routes */}
+      <Route
+        path="/jobs"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <JobsList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/candidates"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <CandidatesList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ai-matching"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AIMatching />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Debug routes (admin only) */}
+      <Route
+        path="/debug"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <DebugPanel />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/fix-jobs"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <JobDebugPanel />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/storage-debug"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <StorageDebugPanel />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 };
@@ -143,11 +200,13 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
-        <Router>
-          <Layout>
-            <AppRoutes />
-          </Layout>
-        </Router>
+        <AuthProvider>
+          <Router>
+            <Layout>
+              <AppRoutes />
+            </Layout>
+          </Router>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
