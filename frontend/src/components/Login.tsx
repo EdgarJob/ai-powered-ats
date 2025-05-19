@@ -15,9 +15,17 @@ import {
     List,
     ListItem,
     ListItemText,
-    CircularProgress
+    CircularProgress,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    SelectChangeEvent,
+    Divider,
+    Chip,
+    Stack
 } from '@mui/material';
-import { Visibility, VisibilityOff, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
+import { Visibility, VisibilityOff, KeyboardArrowDown, KeyboardArrowUp, AccountCircle } from '@mui/icons-material';
 import { useAuth } from '../lib/AuthContext';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { supabaseAdmin } from '../lib/supabase';
@@ -30,13 +38,15 @@ interface RealUser {
     fullName?: string;
     role: string;
     password: string;
+    isTechnical?: boolean;
+    occupation?: string;
 }
 
 // Define interface for user data from Supabase
 interface UserData {
     id: string;
     role: string;
-    candidates: any;
+    email: string;
 }
 
 export function Login() {
@@ -49,6 +59,7 @@ export function Login() {
     const [realUsers, setRealUsers] = useState<RealUser[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [connectionError, setConnectionError] = useState<string | null>(null);
+    const [selectedUser, setSelectedUser] = useState<string>('');
 
     const { signIn } = useAuth();
     const navigate = useNavigate();
@@ -60,76 +71,145 @@ export function Login() {
     // Fetch real users from the database
     useEffect(() => {
         const fetchRealUsers = async () => {
-            if (showSampleUsers) {
-                setLoadingUsers(true);
-                try {
-                    // Get users from the auth and public users tables
-                    const { data, error } = await supabaseAdmin
-                        .from('users')
-                        .select(`
-                            id, 
-                            role,
-                            candidates(
-                                email, 
-                                first_name, 
-                                last_name,
-                                full_name
-                            )
-                        `);
+            setLoadingUsers(true);
+            try {
+                // Create a list of sample users without relying on DB relationships
+                const userList: RealUser[] = [];
 
-                    if (error) {
-                        console.error('Error fetching users:', error);
-                        setConnectionError(`Database error: ${error.message}. This may indicate a connection issue with Supabase.`);
-                        return;
-                    }
+                // First add the admin user
+                userList.push({
+                    email: 'admin@example.com',
+                    fullName: 'Administrator',
+                    role: 'admin',
+                    password: 'admin123',
+                    occupation: 'System Administrator'
+                });
 
-                    // Transform the data into our RealUser format
-                    const userList: RealUser[] = [];
+                // Add our sample candidates with hardcoded data
+                // Technical candidates
+                userList.push({
+                    email: 'david.chen@example.com',
+                    firstName: 'David',
+                    lastName: 'Chen',
+                    fullName: 'David Chen',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: true,
+                    occupation: 'Software Developer'
+                });
 
-                    // First add the admin user
-                    userList.push({
-                        email: 'admin@example.com',
-                        fullName: 'Administrator',
-                        role: 'admin',
-                        password: 'admin123'
-                    });
+                userList.push({
+                    email: 'sophia.patel@example.com',
+                    firstName: 'Sophia',
+                    lastName: 'Patel',
+                    fullName: 'Sophia Patel',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: true,
+                    occupation: 'Data Scientist'
+                });
 
-                    // Then add the real users from the database
-                    if (data && Array.isArray(data)) {
-                        data.forEach((user: UserData) => {
-                            // Handle the case where candidates is an array or a single object
-                            const candidateData = user.candidates ?
-                                (Array.isArray(user.candidates) ? user.candidates[0] : user.candidates) : null;
+                userList.push({
+                    email: 'miguel.rodriguez@example.com',
+                    firstName: 'Miguel',
+                    lastName: 'Rodriguez',
+                    fullName: 'Miguel Rodriguez',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: true,
+                    occupation: 'Cybersecurity Analyst'
+                });
 
-                            if (candidateData && candidateData.email && candidateData.email !== 'admin@example.com') {
-                                userList.push({
-                                    email: candidateData.email,
-                                    firstName: candidateData.first_name,
-                                    lastName: candidateData.last_name,
-                                    fullName: candidateData.full_name ||
-                                        `${candidateData.first_name || ''} ${candidateData.last_name || ''}`.trim(),
-                                    role: user.role,
-                                    password: 'password123'
-                                });
-                            }
-                        });
-                    } else {
-                        console.warn('User data is not in expected format:', data);
-                        setConnectionError('User data is not in expected format. Please check database connection.');
-                    }
+                userList.push({
+                    email: 'alex.johnson@example.com',
+                    firstName: 'Alex',
+                    lastName: 'Johnson',
+                    fullName: 'Alex Johnson',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: true,
+                    occupation: 'DevOps Engineer'
+                });
 
-                    setRealUsers(userList);
-                } catch (err) {
-                    console.error('Exception fetching users:', err);
-                    setConnectionError(`Exception: ${err instanceof Error ? err.message : String(err)}`);
-                } finally {
-                    setLoadingUsers(false);
-                }
+                userList.push({
+                    email: 'grace.kim@example.com',
+                    firstName: 'Grace',
+                    lastName: 'Kim',
+                    fullName: 'Grace Kim',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: true,
+                    occupation: 'Mobile Developer'
+                });
+
+                // Non-technical candidates
+                userList.push({
+                    email: 'james.wilson@example.com',
+                    firstName: 'James',
+                    lastName: 'Wilson',
+                    fullName: 'James Wilson',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: false,
+                    occupation: 'Marketing Director'
+                });
+
+                userList.push({
+                    email: 'emily.brown@example.com',
+                    firstName: 'Emily',
+                    lastName: 'Brown',
+                    fullName: 'Emily Brown',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: false,
+                    occupation: 'HR Professional'
+                });
+
+                userList.push({
+                    email: 'robert.taylor@example.com',
+                    firstName: 'Robert',
+                    lastName: 'Taylor',
+                    fullName: 'Robert Taylor',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: false,
+                    occupation: 'Financial Analyst'
+                });
+
+                userList.push({
+                    email: 'olivia.martinez@example.com',
+                    firstName: 'Olivia',
+                    lastName: 'Martinez',
+                    fullName: 'Olivia Martinez',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: false,
+                    occupation: 'PR Specialist'
+                });
+
+                userList.push({
+                    email: 'daniel.jackson@example.com',
+                    firstName: 'Daniel',
+                    lastName: 'Jackson',
+                    fullName: 'Daniel Jackson',
+                    role: 'member',
+                    password: 'password123',
+                    isTechnical: false,
+                    occupation: 'Sales Manager'
+                });
+
+                setRealUsers(userList);
+                setConnectionError(null);
+            } catch (err) {
+                console.error('Exception fetching users:', err);
+                setConnectionError(`Exception: ${err instanceof Error ? err.message : String(err)}`);
+            } finally {
+                setLoadingUsers(false);
             }
         };
 
         fetchRealUsers();
-    }, [showSampleUsers]);
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -172,9 +252,18 @@ export function Login() {
         setShowPassword(!showPassword);
     };
 
-    const handleSelectSampleUser = (user: RealUser) => {
-        setEmail(user.email);
-        setPassword(user.password);
+    const handleSelectUser = (event: SelectChangeEvent<string>) => {
+        const value = event.target.value;
+        console.log('Selected user email:', value);
+        setSelectedUser(value);
+
+        // Find the user with the selected email
+        const user = realUsers.find(u => u.email === value);
+        console.log('Found user:', user);
+        if (user) {
+            setEmail(user.email);
+            setPassword(user.password);
+        }
     };
 
     return (
@@ -209,6 +298,44 @@ export function Login() {
                                 Make sure your Supabase server is running and configured correctly.
                             </Typography>
                         </Alert>
+                    )}
+
+                    {/* Simplified Test Account Selector */}
+                    {realUsers.length > 0 && (
+                        <FormControl fullWidth margin="normal" sx={{ mb: 3 }}>
+                            <InputLabel id="test-account-label">Login as Test Account</InputLabel>
+                            <Select
+                                labelId="test-account-label"
+                                id="test-account-select"
+                                value={selectedUser}
+                                label="Login as Test Account"
+                                onChange={handleSelectUser}
+                            >
+                                <MenuItem value="">
+                                    <em>Select a test account</em>
+                                </MenuItem>
+
+                                {/* Admin Users */}
+                                <MenuItem value="admin@example.com">Administrator - Admin</MenuItem>
+
+                                {/* Technical Users */}
+                                <MenuItem value="david.chen@example.com">David Chen - Software Developer</MenuItem>
+                                <MenuItem value="sophia.patel@example.com">Sophia Patel - Data Scientist</MenuItem>
+                                <MenuItem value="miguel.rodriguez@example.com">Miguel Rodriguez - Cybersecurity Analyst</MenuItem>
+                                <MenuItem value="alex.johnson@example.com">Alex Johnson - DevOps Engineer</MenuItem>
+                                <MenuItem value="grace.kim@example.com">Grace Kim - Mobile Developer</MenuItem>
+
+                                {/* Non-Technical Users */}
+                                <MenuItem value="james.wilson@example.com">James Wilson - Marketing Director</MenuItem>
+                                <MenuItem value="emily.brown@example.com">Emily Brown - HR Professional</MenuItem>
+                                <MenuItem value="robert.taylor@example.com">Robert Taylor - Financial Analyst</MenuItem>
+                                <MenuItem value="olivia.martinez@example.com">Olivia Martinez - PR Specialist</MenuItem>
+                                <MenuItem value="daniel.jackson@example.com">Daniel Jackson - Sales Manager</MenuItem>
+                            </Select>
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                                Select a test account to automatically fill login credentials
+                            </Typography>
+                        </FormControl>
                     )}
 
                     <Box component="form" onSubmit={handleSubmit} noValidate>
@@ -263,54 +390,23 @@ export function Login() {
                         </Button>
                     </Box>
 
-                    {/* Sample Users Section */}
-                    <Box mt={3}>
-                        <Button
-                            onClick={() => setShowSampleUsers(!showSampleUsers)}
-                            endIcon={showSampleUsers ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-                            fullWidth
-                            variant="outlined"
-                            color="secondary"
-                        >
-                            {showSampleUsers ? 'Hide Sample Users' : 'Show Available Users'}
-                        </Button>
-                        <Collapse in={showSampleUsers}>
-                            <Paper variant="outlined" sx={{ mt: 2, p: 2 }}>
-                                <Typography variant="subtitle1" gutterBottom>
-                                    Available User Accounts
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" paragraph>
-                                    Click on any user to auto-fill login credentials.
-                                </Typography>
+                    {loadingUsers && (
+                        <Box display="flex" justifyContent="center" py={2}>
+                            <CircularProgress size={24} />
+                            <Typography variant="body2" sx={{ ml: 2 }}>
+                                Loading available user accounts...
+                            </Typography>
+                        </Box>
+                    )}
 
-                                {loadingUsers ? (
-                                    <Box display="flex" justifyContent="center" py={2}>
-                                        <CircularProgress size={24} />
-                                    </Box>
-                                ) : realUsers.length > 0 ? (
-                                    <List dense>
-                                        {realUsers.map((user) => (
-                                            <ListItem
-                                                key={user.email}
-                                                button
-                                                onClick={() => handleSelectSampleUser(user)}
-                                                sx={{ border: '1px solid #eee', mb: 1, borderRadius: 1 }}
-                                            >
-                                                <ListItemText
-                                                    primary={user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email}
-                                                    secondary={`${user.email} | Role: ${user.role} | Password: ${user.password}`}
-                                                />
-                                            </ListItem>
-                                        ))}
-                                    </List>
-                                ) : (
-                                    <Alert severity="info" sx={{ mt: 2 }}>
-                                        No user accounts found. Visit the {' '}
-                                        <Link component={RouterLink} to="/diagnostics">Diagnostics</Link> page to create sample users.
-                                    </Alert>
-                                )}
-                            </Paper>
-                        </Collapse>
+                    {/* Register New User Link */}
+                    <Box textAlign="center" mt={2}>
+                        <Typography variant="body2">
+                            Don't have an account?{' '}
+                            <Link component={RouterLink} to="/register">
+                                Register here
+                            </Link>
+                        </Typography>
                     </Box>
                 </CardContent>
             </Card>
@@ -319,6 +415,9 @@ export function Login() {
             <Box mt={3} textAlign="center">
                 <Typography variant="body2" color="text.secondary">
                     For admin access, use <strong>admin@example.com</strong> with password <strong>admin123</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" mt={1}>
+                    For all sample candidate accounts, use password: <strong>password123</strong>
                 </Typography>
             </Box>
         </Box>

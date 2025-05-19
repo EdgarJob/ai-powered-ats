@@ -88,6 +88,7 @@ export function Layout({ children }: LayoutProps) {
     { name: 'Job Management', href: '/jobs' },
     { name: 'Candidates', href: '/candidates' },
     { name: 'AI Matching', href: '/ai-matching' },
+    { name: 'Sample Users', href: '/manage-sample-users' },
     { name: 'Debug', href: '/debug' },
     { name: 'Diagnostics', href: '/diagnostics' }
   ];

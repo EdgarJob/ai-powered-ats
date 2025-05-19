@@ -25,6 +25,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { SupabaseDiagnostic } from './components/SupabaseDiagnostic';
 import { UserRegistration } from './components/UserRegistration';
 import { UserProfile } from './components/UserProfile';
+import { SampleDataGenerator } from './components/SampleDataGenerator';
 
 // Create a theme instance with Apple-like design
 const theme = createTheme({
@@ -165,7 +166,11 @@ const AppRoutes = () => {
       } />
 
       {/* Diagnostic routes */}
-      <Route path="/diagnostics" element={<SupabaseDiagnostic />} />
+      <Route path="/diagnostics" element={
+        <>
+          <SupabaseDiagnostic />
+        </>
+      } />
 
       {/* Member routes */}
       <Route
@@ -207,6 +212,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="admin">
             <AIMatching />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Sample Users Management */}
+      <Route
+        path="/manage-sample-users"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <SampleDataGenerator />
           </ProtectedRoute>
         }
       />

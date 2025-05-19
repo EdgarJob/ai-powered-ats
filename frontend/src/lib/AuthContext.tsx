@@ -268,20 +268,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const signOut = async () => {
         console.log('Signing out user');
         try {
-            const { error } = await supabase.auth.signOut();
+            // Clear state first to prevent flicker of old state
+            setUser(null);
+            setSession(null);
+            setUserRole(null);
+
+            // Then perform the actual signout
+            const { error } = await supabase.auth.signOut({
+                scope: 'global' // This ensures complete signout from all tabs/windows
+            });
+
             if (error) {
                 console.error('Error signing out:', error);
                 throw error;
             }
 
-            // Explicitly clear user state
+            // Force clear local storage of any auth related data
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (
+                    key.includes('supabase') ||
+                    key.includes('auth') ||
+                    key.includes('token') ||
+                    key.includes('session')
+                )) {
+                    console.log('Removing localStorage item:', key);
+                    localStorage.removeItem(key);
+                    i--; // Adjust index as we're removing items
+                }
+            }
+
+            // Clear session storage as well
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key && (
+                    key.includes('supabase') ||
+                    key.includes('auth') ||
+                    key.includes('token') ||
+                    key.includes('session')
+                )) {
+                    console.log('Removing sessionStorage item:', key);
+                    sessionStorage.removeItem(key);
+                    i--; // Adjust index as we're removing items
+                }
+            }
+
+            // Force clear cookies
+            document.cookie.split(";").forEach(function (c) {
+                if (c.includes('supabase') || c.includes('auth') || c.includes('token')) {
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                    console.log('Cleared cookie:', c);
+                }
+            });
+
+            console.log('User signed out successfully, redirecting to home page');
+
+            // Force page reload to ensure clean state
+            // Wait a short moment to allow cleanup to complete
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 100);
+        } catch (error) {
+            console.error('Exception during sign out:', error);
+            // Even if there's an error, attempt to clear state
             setUser(null);
             setSession(null);
             setUserRole(null);
-
-            console.log('User signed out successfully');
-        } catch (error) {
-            console.error('Exception during sign out:', error);
             throw error;
         }
     };
