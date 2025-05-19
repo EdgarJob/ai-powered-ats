@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -13,7 +13,10 @@ import {
   IconButton,
   Avatar,
   Divider,
-  Tooltip
+  Tooltip,
+  Snackbar,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { AccountCircle, ExitToApp } from '@mui/icons-material';
 import { useAuth } from '../lib/AuthContext';
@@ -26,7 +29,15 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, userRole, signOut } = useAuth();
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutMessage, setLogoutMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // Debug user role
+  useEffect(() => {
+    console.log('Layout - User role:', userRole);
+    console.log('Layout - Is user logged in:', !!user);
+  }, [user, userRole]);
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -38,27 +49,77 @@ export function Layout({ children }: LayoutProps) {
 
   const handleLogout = async () => {
     handleClose();
-    await signOut();
-    navigate('/login');
+    setIsLoggingOut(true);
+
+    try {
+      // First clear any local storage data
+      localStorage.clear();
+
+      // Then call the signOut function
+      await signOut();
+
+      setLogoutMessage({
+        type: 'success',
+        message: 'You have been logged out successfully'
+      });
+
+      // Force refresh the page with a small delay to ensure logout completes
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      setLogoutMessage({
+        type: 'error',
+        message: 'Failed to log out. Please try again.'
+      });
+      setIsLoggingOut(false);
+    }
   };
 
-  // Navigation items for admins
+  const handleSnackbarClose = () => {
+    setLogoutMessage(null);
+  };
+
+  // Navigation items for admins - ensure all admin pages are included
   const adminNavigation = [
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Current Job Openings', href: '/' },
+    { name: 'Job Openings', href: '/' },
     { name: 'Job Management', href: '/jobs' },
-    { name: 'View Candidates', href: '/candidates' },
-    { name: 'AI Matching', href: '/ai-matching' }
+    { name: 'Candidates', href: '/candidates' },
+    { name: 'AI Matching', href: '/ai-matching' },
+    { name: 'Debug', href: '/debug' },
+    { name: 'Diagnostics', href: '/diagnostics' }
   ];
 
-  // Navigation items for regular users
-  const userNavigation = [
-    { name: 'Current Job Openings', href: '/' },
-    { name: 'Register as Candidate', href: '/register' }
+  // Navigation items for regular members
+  const memberNavigation = [
+    { name: 'Job Openings', href: '/' },
+    { name: 'My Profile', href: '/profile' }
+  ];
+
+  // Navigation items for public users (not logged in)
+  // Reordered to put Login at the end (will be rightmost)
+  const publicNavigation = [
+    { name: 'Job Openings', href: '/' },
+    { name: 'Register', href: '/register' },
+    { name: 'Login', href: '/login' }
   ];
 
   // Determine which navigation items to show based on user role
-  const navigation = userRole === 'admin' ? adminNavigation : userNavigation;
+  let navigation;
+  if (!user) {
+    navigation = publicNavigation;
+  } else if (userRole === 'admin') {
+    navigation = adminNavigation;
+  } else if (userRole === 'member') {
+    navigation = memberNavigation;
+  } else {
+    // Fallback to public navigation if role is not recognized
+    navigation = publicNavigation;
+  }
+
+  console.log('Layout - Using navigation for role:', userRole, navigation);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'grey.50' }}>
@@ -70,20 +131,23 @@ export function Layout({ children }: LayoutProps) {
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
             {navigation.map((item) => (
-              <Button
-                key={item.href}
-                component={Link}
-                to={item.href}
-                sx={{
-                  color: 'white',
-                  bgcolor: location.pathname === item.href ? 'primary.dark' : 'transparent',
-                  '&:hover': {
-                    bgcolor: 'primary.dark',
-                  }
-                }}
-              >
-                {item.name}
-              </Button>
+              // Don't show login/register buttons if user is logged in
+              (user && (item.href === '/login' || item.href === '/register')) ? null : (
+                <Button
+                  key={item.href}
+                  component={Link}
+                  to={item.href}
+                  sx={{
+                    color: 'white',
+                    bgcolor: location.pathname === item.href ? 'primary.dark' : 'transparent',
+                    '&:hover': {
+                      bgcolor: 'primary.dark',
+                    }
+                  }}
+                >
+                  {item.name}
+                </Button>
+              )
             ))}
 
             {user ? (
@@ -96,8 +160,13 @@ export function Layout({ children }: LayoutProps) {
                     aria-haspopup="true"
                     onClick={handleMenu}
                     color="inherit"
+                    disabled={isLoggingOut}
                   >
-                    <AccountCircle />
+                    {isLoggingOut ? (
+                      <CircularProgress color="inherit" size={24} />
+                    ) : (
+                      <AccountCircle />
+                    )}
                   </IconButton>
                 </Tooltip>
                 <Menu
@@ -122,27 +191,17 @@ export function Layout({ children }: LayoutProps) {
                     </Box>
                   </MenuItem>
                   <Divider />
-                  <MenuItem onClick={handleLogout}>
-                    <ExitToApp fontSize="small" sx={{ mr: 1 }} />
-                    Logout
+                  <MenuItem onClick={handleLogout} disabled={isLoggingOut}>
+                    {isLoggingOut ? (
+                      <CircularProgress size={20} sx={{ mr: 1 }} />
+                    ) : (
+                      <ExitToApp fontSize="small" sx={{ mr: 1 }} />
+                    )}
+                    {isLoggingOut ? 'Logging out...' : 'Logout'}
                   </MenuItem>
                 </Menu>
               </>
-            ) : (
-              <Button
-                color="inherit"
-                component={Link}
-                to="/login"
-                sx={{
-                  bgcolor: location.pathname === '/login' ? 'primary.dark' : 'transparent',
-                  '&:hover': {
-                    bgcolor: 'primary.dark',
-                  }
-                }}
-              >
-                Login
-              </Button>
-            )}
+            ) : null}
           </Box>
         </Toolbar>
       </AppBar>
@@ -151,6 +210,24 @@ export function Layout({ children }: LayoutProps) {
       <Container component="main" sx={{ py: 4, flexGrow: 1 }}>
         {children}
       </Container>
+
+      {/* Logout notification */}
+      <Snackbar
+        open={!!logoutMessage}
+        autoHideDuration={5000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {logoutMessage ? (
+          <Alert
+            onClose={handleSnackbarClose}
+            severity={logoutMessage.type}
+            sx={{ width: '100%' }}
+          >
+            {logoutMessage.message}
+          </Alert>
+        ) : <div />}
+      </Snackbar>
 
       {/* Footer */}
       <Paper component="footer" square variant="outlined" sx={{ py: 3, mt: 'auto' }}>

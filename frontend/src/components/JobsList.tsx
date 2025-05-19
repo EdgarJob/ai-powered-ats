@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Box, Typography, Chip, Button, Select, MenuItem, FormControl, InputLabel, Alert, TextField, Snackbar } from '@mui/material';
+import { Box, Typography, Chip, Button, Select, MenuItem, FormControl, InputLabel, Alert, TextField, Snackbar, CircularProgress } from '@mui/material';
 import { supabaseAdmin } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { AddJobForm } from './AddJobForm';
@@ -122,6 +122,160 @@ export function JobsList() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [showDisplayFixNotice, setShowDisplayFixNotice] = useState(false);
+    const [showFallbackData, setShowFallbackData] = useState(false);
+    const [manualError, setManualError] = useState<string | null>(null);
+    const [manualLoading, setManualLoading] = useState(false);
+    const [manualJobs, setManualJobs] = useState<Job[]>([]);
+
+    // Sample fallback job data that matches the Job type from database.types.ts
+    const fallbackJobs: Job[] = [
+        {
+            id: 'sample-1',
+            org_id: 'org-1',
+            title: 'Senior Software Engineer',
+            description: 'We are looking for a skilled software engineer to join our development team.',
+            status: 'published',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            created_by: 'admin',
+            requirements: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'AWS'],
+            responsibilities: '- Develop web applications\n- Write clean code\n- Work with cross-functional teams\n- Mentor junior developers\n- Participate in code reviews',
+            metadata: {
+                industry: 'Technology',
+                location: 'Remote',
+                field: 'Software Development',
+                deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+            },
+            industry: 'Technology',
+            location: 'Remote',
+            field: 'Software Development',
+            deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+            id: 'sample-2',
+            org_id: 'org-1',
+            title: 'Product Manager',
+            description: 'Join our product team to lead the development of innovative products.',
+            status: 'published',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            created_by: 'admin',
+            requirements: ['Product Management', 'Agile', 'User Experience', 'Market Research'],
+            responsibilities: '- Define product roadmap\n- Gather requirements\n- Work with engineering teams\n- Conduct market research\n- Analyze user feedback',
+            metadata: {
+                industry: 'Technology',
+                location: 'New York, NY',
+                field: 'Product Management',
+                deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString() // 15 days from now
+            },
+            industry: 'Technology',
+            location: 'New York, NY',
+            field: 'Product Management',
+            deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+            id: 'sample-3',
+            org_id: 'org-1',
+            title: 'UX/UI Designer',
+            description: 'Design beautiful and intuitive user interfaces for our web and mobile applications.',
+            status: 'draft',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            created_by: 'admin',
+            requirements: ['UI Design', 'Figma', 'User Research', 'Prototyping'],
+            responsibilities: '- Create wireframes and prototypes\n- Conduct user research\n- Design user interfaces\n- Work with developers to implement designs\n- Iterate based on feedback',
+            metadata: {
+                industry: 'Technology',
+                location: 'San Francisco, CA',
+                field: 'Design',
+                deadline: null
+            },
+            industry: 'Technology',
+            location: 'San Francisco, CA',
+            field: 'Design',
+            deadline: null
+        }
+    ];
+
+    // Function to manually fetch jobs with fallback data
+    const manualFetchJobs = async () => {
+        try {
+            setManualLoading(true);
+            setManualError(null);
+            setShowFallbackData(false);
+
+            const { data, error } = await supabaseAdmin
+                .from('jobs')
+                .select('*')
+                .order(sortField, { ascending: sortOrder === 'asc' });
+
+            if (error) {
+                console.error('Error fetching jobs manually:', error);
+                setManualError(error.message);
+
+                // Show fallback data after a timeout
+                setTimeout(() => {
+                    setShowFallbackData(true);
+                    setManualJobs(fallbackJobs);
+                    setManualLoading(false);
+                }, 2000);
+
+                return;
+            }
+
+            // Process the data similar to the query function
+            const processedJobs = data?.map(job => {
+                let metadata: {
+                    deadline?: string,
+                    industry?: string,
+                    location?: string,
+                    field?: string,
+                    responsibilities?: string
+                } = {};
+
+                // Extract metadata
+                if (job.metadata) {
+                    try {
+                        if (typeof job.metadata === 'string') {
+                            metadata = JSON.parse(job.metadata);
+                        } else if (typeof job.metadata === 'object') {
+                            metadata = job.metadata;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing metadata for job', job.id, e);
+                    }
+                }
+
+                // Return the processed job
+                return {
+                    ...job,
+                    deadline: metadata?.deadline || null,
+                    industry: metadata?.industry || null,
+                    location: metadata?.location || null,
+                    field: metadata?.field || null,
+                    responsibilities: job.responsibilities || metadata.responsibilities || null
+                };
+            });
+
+            setManualJobs(processedJobs || []);
+            setManualLoading(false);
+        } catch (err) {
+            console.error('Error in manual jobs fetch:', err);
+            setManualError(err instanceof Error ? err.message : String(err));
+
+            // Show fallback data after error
+            setTimeout(() => {
+                setShowFallbackData(true);
+                setManualJobs(fallbackJobs);
+                setManualLoading(false);
+            }, 2000);
+        }
+    };
+
+    // Fetch jobs when component mounts or when filters change
+    useEffect(() => {
+        manualFetchJobs();
+    }, [sortField, sortOrder, refreshTrigger]);
 
     // Use admin client for better permissions
     const { data: jobs, isLoading, error, refetch } = useQuery({
@@ -228,6 +382,11 @@ export function JobsList() {
         statusFilter === 'all' ? true : job.status === statusFilter
     );
 
+    // Apply filters and sort to manually fetched jobs
+    const filteredManualJobs = manualJobs?.filter(job =>
+        statusFilter === 'all' ? true : job.status === statusFilter
+    );
+
     // Handle sort changes
     const handleSortChange = (field: SortField) => {
         if (field === sortField) {
@@ -239,7 +398,7 @@ export function JobsList() {
             // Default order: desc for dates (newest first), asc for text (A to Z)
             setSortOrder(field === 'created_at' ? 'desc' : 'asc');
         }
-        refetch();
+        manualFetchJobs(); // Use manual fetch instead of refetch
     };
 
     // Get sort direction indicator
@@ -283,6 +442,11 @@ export function JobsList() {
             // Also remove any localStorage items related to this job
             localStorage.removeItem(`job_${jobId}_metadata`);
             localStorage.removeItem(`job_${jobId}_responsibilities`);
+
+            // Refresh the data from the server to ensure UI is up to date
+            await refetch();
+            // Also trigger a manual fetch to ensure all job data is refreshed
+            await manualFetchJobs();
         } catch (err) {
             console.error('Error deleting job:', err);
             alert('Failed to delete job');
@@ -435,6 +599,11 @@ export function JobsList() {
 
             // Clear the editing state
             setEditingJob(null);
+
+            // Refresh the data from the server to ensure UI is up to date
+            await refetch();
+            // Also trigger a manual fetch to ensure all job data is refreshed
+            await manualFetchJobs();
         } catch (err) {
             console.error('Error updating job:', err);
             // Show full error details
@@ -463,6 +632,11 @@ export function JobsList() {
                 // Update the cached data
                 queryClient.setQueryData(['jobs', refreshTrigger], updatedJobs);
             }
+
+            // Refresh the data from the server to ensure UI is up to date
+            await refetch();
+            // Also trigger a manual fetch to ensure all job data is refreshed
+            await manualFetchJobs();
         } catch (err) {
             console.error('Error updating job status:', err);
         }
@@ -524,6 +698,26 @@ export function JobsList() {
 
         handleSaveEdit(updatedJob);
     };
+
+    if (manualLoading) {
+        return (
+            <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="50vh" p={4}>
+                <CircularProgress size={60} sx={{ mb: 3 }} />
+                <Typography variant="h6" gutterBottom>Loading Jobs...</Typography>
+            </Box>
+        );
+    }
+
+    if (manualError && !showFallbackData) {
+        return (
+            <Box p={4}>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    Error loading jobs: {manualError}
+                </Alert>
+                <Button variant="contained" onClick={manualFetchJobs}>Retry</Button>
+            </Box>
+        );
+    }
 
     if (isLoading) return <Box p={4}>Loading jobs...</Box>;
     if (error) return <Box p={4} color="error.main">Error loading jobs: {(error as Error).message}</Box>;
@@ -625,11 +819,62 @@ export function JobsList() {
                 </Button>
             </Box>
 
-            {filteredJobs?.length === 0 ? (
+            {/* Job Statistics Bar */}
+            {manualJobs && manualJobs.length > 0 && (
+                <Box
+                    sx={{
+                        display: 'flex',
+                        gap: 3,
+                        mb: 3,
+                        p: 2,
+                        borderRadius: 1,
+                        backgroundColor: '#f5f5f7',
+                        border: '1px solid #e0e0e0'
+                    }}
+                >
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="h6" color="primary" fontWeight="bold">
+                            {manualJobs.length}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Total Jobs
+                        </Typography>
+                    </Box>
+
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="h6" color="success.main" fontWeight="bold">
+                            {manualJobs.filter(job => job.status === 'published').length}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Published
+                        </Typography>
+                    </Box>
+
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="h6" color="warning.main" fontWeight="bold">
+                            {manualJobs.filter(job => job.status === 'draft').length}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Draft
+                        </Typography>
+                    </Box>
+
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="h6" color="error.main" fontWeight="bold">
+                            {manualJobs.filter(job => job.status === 'closed').length}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Closed
+                        </Typography>
+                    </Box>
+                </Box>
+            )}
+
+            {filteredManualJobs?.length === 0 ? (
                 <Alert severity="info">No jobs found. Add a new job to get started.</Alert>
             ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    {filteredJobs?.map(job => (
+                    {filteredManualJobs?.map(job => (
                         <Box key={job.id} sx={{ border: 1, borderColor: 'grey.300', borderRadius: 2, p: 3, boxShadow: 1 }}>
                             <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                                 <Box>

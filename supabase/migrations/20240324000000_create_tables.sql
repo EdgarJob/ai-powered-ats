@@ -1,10 +1,3 @@
--- Drop existing tables if they exist
-DROP TABLE IF EXISTS candidate_scores;
-DROP TABLE IF EXISTS candidates;
-DROP TABLE IF EXISTS jobs;
-DROP TABLE IF EXISTS org_credits;
-DROP TABLE IF EXISTS organizations;
-
 -- Create organizations table
 CREATE TABLE IF NOT EXISTS organizations (
     id UUID PRIMARY KEY,

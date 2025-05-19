@@ -25,7 +25,12 @@
         "./src/*"
       ]
     },
-    "types": []
+    "types": [
+      "react",
+      "react-dom",
+      "react-router-dom",
+      "node"
+    ]
   },
   "include": [
     "src",

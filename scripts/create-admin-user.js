@@ -17,7 +17,7 @@ const config = {
 
     // Admin user details - CHANGE THESE!
     adminEmail: 'admin@example.com',     // Change this to your admin email
-    adminPassword: 'StrongPassword123!', // Change this to a secure password
+    adminPassword: 'admin', // Change this to a secure password
     organizationName: 'Default Organization',
 }
 

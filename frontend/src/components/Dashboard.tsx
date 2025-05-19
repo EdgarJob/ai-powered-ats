@@ -10,7 +10,8 @@ import {
     Alert,
     Divider,
     Chip,
-    Stack
+    Stack,
+    Button
 } from '@mui/material';
 import { supabaseAdmin } from '../lib/supabase';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
@@ -42,38 +43,97 @@ export function Dashboard() {
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showFallbackData, setShowFallbackData] = useState(false);
 
-    useEffect(() => {
-        const fetchDashboardStats = async () => {
-            try {
-                setLoading(true);
-                setError(null);
+    // Sample fallback data for demonstration
+    const fallbackStats: DashboardStats = {
+        totalCandidates: 35,
+        totalJobs: 12,
+        totalApplications: 67,
+        recentCandidates: 18,
+        popularEducationLevels: [
+            { level: "Bachelor's", count: 15 },
+            { level: "Master's", count: 10 },
+            { level: "PhD", count: 5 },
+            { level: "High School", count: 3 },
+            { level: "Associate", count: 2 }
+        ],
+        popularLocations: [
+            { location: "San Francisco, CA", count: 12 },
+            { location: "New York, NY", count: 8 },
+            { location: "Austin, TX", count: 6 },
+            { location: "Seattle, WA", count: 5 },
+            { location: "Chicago, IL", count: 4 }
+        ],
+        jobsByStatus: [
+            { status: "published", count: 7 },
+            { status: "draft", count: 3 },
+            { status: "closed", count: 2 }
+        ]
+    };
 
-                // Fetch total candidates
-                const { count: candidatesCount, error: candidatesError } = await supabaseAdmin
-                    .from('candidates')
-                    .select('*', { count: 'exact', head: true });
+    // Helper function to safely check if a column exists in a table
+    const checkColumnExists = async (tableName: string, columnName: string): Promise<boolean> => {
+        try {
+            // Try to select just one row with this column
+            const { data, error } = await supabaseAdmin
+                .from(tableName)
+                .select(columnName)
+                .limit(1);
 
-                if (candidatesError) throw candidatesError;
+            // If there's no error, the column exists
+            return !error;
+        } catch (err) {
+            console.log(`Column ${columnName} in table ${tableName} does not exist or is not accessible`);
+            return false;
+        }
+    };
 
-                // Fetch total jobs
-                const { count: jobsCount, error: jobsError } = await supabaseAdmin
-                    .from('jobs')
-                    .select('*', { count: 'exact', head: true });
+    const fetchDashboardStats = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            setShowFallbackData(false);
 
-                if (jobsError) throw jobsError;
+            // Fetch total candidates
+            const { count: candidatesCount, error: candidatesError } = await supabaseAdmin
+                .from('candidates')
+                .select('*', { count: 'exact', head: true });
 
-                // Fetch candidates registered in the last 30 days
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            if (candidatesError || candidatesCount === null) {
+                console.error('Error fetching candidates count:', candidatesError);
+                setError('Failed to connect to database. Using sample data instead.');
+                setTimeout(() => {
+                    setShowFallbackData(true);
+                    setStats(fallbackStats);
+                    setLoading(false);
+                }, 500); // Reduced timeout for better user experience
+                return;
+            }
 
-                const { count: recentCandidatesCount, error: recentCandidatesError } = await supabaseAdmin
-                    .from('candidates')
-                    .select('*', { count: 'exact', head: true })
-                    .gte('created_at', thirtyDaysAgo.toISOString());
+            // Fetch total jobs
+            const { count: jobsCount, error: jobsError } = await supabaseAdmin
+                .from('jobs')
+                .select('*', { count: 'exact', head: true });
 
-                if (recentCandidatesError) throw recentCandidatesError;
+            if (jobsError) throw jobsError;
 
+            // Fetch candidates registered in the last 30 days
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const { count: recentCandidatesCount, error: recentCandidatesError } = await supabaseAdmin
+                .from('candidates')
+                .select('*', { count: 'exact', head: true })
+                .gte('created_at', thirtyDaysAgo.toISOString());
+
+            if (recentCandidatesError) throw recentCandidatesError;
+
+            // Check if education_level column exists before trying to query it
+            const hasEducationLevel = await checkColumnExists('candidates', 'education_level');
+            let popularEducationLevels: { level: string; count: number }[] = [];
+
+            if (hasEducationLevel) {
                 // Fetch popular education levels
                 const { data: educationData, error: educationError } = await supabaseAdmin
                     .from('candidates')
@@ -90,11 +150,19 @@ export function Dashboard() {
                     }
                 });
 
-                const popularEducationLevels = Object.entries(educationCounts)
+                popularEducationLevels = Object.entries(educationCounts)
                     .map(([level, count]) => ({ level, count }))
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 5);
+            } else {
+                console.log('education_level column does not exist in candidates table');
+            }
 
+            // Check if location column exists before trying to query it
+            const hasLocation = await checkColumnExists('candidates', 'location');
+            let popularLocations: { location: string; count: number }[] = [];
+
+            if (hasLocation) {
                 // Fetch popular locations
                 const { data: locationData, error: locationError } = await supabaseAdmin
                     .from('candidates')
@@ -111,52 +179,93 @@ export function Dashboard() {
                     }
                 });
 
-                const popularLocations = Object.entries(locationCounts)
+                popularLocations = Object.entries(locationCounts)
                     .map(([location, count]) => ({ location, count }))
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 5);
+            } else {
+                console.log('location column does not exist in candidates table');
+            }
 
-                // Fetch jobs by status
-                const { data: jobStatusData, error: jobStatusError } = await supabaseAdmin
-                    .from('jobs')
-                    .select('status');
+            // Fetch jobs by status
+            const { data: jobStatusData, error: jobStatusError } = await supabaseAdmin
+                .from('jobs')
+                .select('status');
 
-                if (jobStatusError) throw jobStatusError;
+            if (jobStatusError) throw jobStatusError;
 
-                // Count job statuses
-                const jobStatusCounts: Record<string, number> = {};
-                jobStatusData?.forEach(job => {
-                    const status = job.status || 'unknown';
-                    jobStatusCounts[status] = (jobStatusCounts[status] || 0) + 1;
-                });
+            // Count job statuses
+            const jobStatusCounts: Record<string, number> = {};
+            jobStatusData?.forEach(job => {
+                const status = job.status || 'unknown';
+                jobStatusCounts[status] = (jobStatusCounts[status] || 0) + 1;
+            });
 
-                const jobsByStatus = Object.entries(jobStatusCounts)
-                    .map(([status, count]) => ({ status, count }));
+            const jobsByStatus = Object.entries(jobStatusCounts)
+                .map(([status, count]) => ({ status, count }));
 
-                // TODO: Fetch applications count when an applications table is available
-                const totalApplications = 0;
+            // TODO: Fetch applications count when an applications table is available
+            const totalApplications = 0;
 
-                // Update stats state
-                setStats({
-                    totalCandidates: candidatesCount || 0,
-                    totalJobs: jobsCount || 0,
-                    totalApplications,
-                    recentCandidates: recentCandidatesCount || 0,
-                    popularEducationLevels,
-                    popularLocations,
-                    jobsByStatus
-                });
+            // Update stats state
+            setStats({
+                totalCandidates: candidatesCount || 0,
+                totalJobs: jobsCount || 0,
+                totalApplications,
+                recentCandidates: recentCandidatesCount || 0,
+                popularEducationLevels,
+                popularLocations,
+                jobsByStatus
+            });
 
-            } catch (err) {
-                console.error('Error fetching dashboard stats:', err);
-                setError('Failed to load dashboard statistics. Please try again later.');
-            } finally {
+        } catch (err: any) {
+            console.error('Error fetching dashboard stats:', err);
+
+            // Check if the error is related to missing columns
+            if (err && err.message &&
+                (err.message.includes('column') ||
+                    err.message.includes('does not exist') ||
+                    err.code === '42703')) {
+                setError('The database schema does not match what the dashboard expects. Using sample data instead.');
+            } else {
+                setError('Failed to load dashboard statistics. Using sample data.');
+            }
+
+            // Show fallback data
+            setTimeout(() => {
+                setShowFallbackData(true);
+                setStats(fallbackStats);
+                setLoading(false);
+            }, 500);
+            return;
+        } finally {
+            if (!showFallbackData) {
                 setLoading(false);
             }
-        };
+        }
+    };
 
+    useEffect(() => {
         fetchDashboardStats();
     }, []);
+
+    // Auto-retry when in fallback mode
+    useEffect(() => {
+        let retryTimer: number | null = null;
+
+        if (showFallbackData) {
+            // Try to fetch real data every 10 seconds when showing fallback data
+            retryTimer = window.setTimeout(() => {
+                console.log('Auto-retrying dashboard data fetch...');
+                fetchDashboardStats();
+            }, 10000); // retry after 10 seconds
+        }
+
+        // Clear timer on cleanup
+        return () => {
+            if (retryTimer) window.clearTimeout(retryTimer);
+        };
+    }, [showFallbackData]);
 
     // Helper function to get status color
     const getStatusColor = (status: string): string => {
@@ -176,14 +285,33 @@ export function Dashboard() {
 
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                <CircularProgress />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', my: 4 }}>
+                <CircularProgress size={60} sx={{ mb: 3 }} />
+                <Typography variant="h6" gutterBottom>Loading Dashboard Data...</Typography>
+                <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 2 }}>
+                    This may take a moment if the database is starting up.
+                </Typography>
+                <Button
+                    variant="outlined"
+                    onClick={() => {
+                        setShowFallbackData(true);
+                        setStats(fallbackStats);
+                        setLoading(false);
+                    }}
+                >
+                    Show Sample Data Instead
+                </Button>
             </Box>
         );
     }
 
-    if (error) {
-        return <Alert severity="error">{error}</Alert>;
+    if (error && !showFallbackData) {
+        return (
+            <Box p={4}>
+                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+                <Button variant="contained" onClick={fetchDashboardStats}>Retry</Button>
+            </Box>
+        );
     }
 
     return (
@@ -191,6 +319,26 @@ export function Dashboard() {
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
                 Dashboard
             </Typography>
+
+            {showFallbackData && (
+                <Alert
+                    severity="info"
+                    sx={{ mb: 3 }}
+                    action={
+                        <Button color="inherit" size="small" onClick={fetchDashboardStats}>
+                            Try Real Data
+                        </Button>
+                    }
+                >
+                    Database connection failed. Showing sample dashboard data for demonstration purposes.
+                </Alert>
+            )}
+
+            {!showFallbackData && (
+                <Alert severity="success" sx={{ mb: 3 }}>
+                    Showing real-time dashboard data from your database.
+                </Alert>
+            )}
 
             {/* Summary Cards */}
             <Grid container spacing={3} sx={{ mb: 4 }}>

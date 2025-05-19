@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 import config from './config';
 
+// Log Supabase configuration for debugging
+console.log('Initializing Supabase clients with URL:', config.supabaseUrl);
+
 // Regular client with anon key for public operations
 export const supabase = createClient<Database>(
     config.supabaseUrl, 
@@ -35,10 +38,27 @@ export const supabaseAdmin = createClient<Database>(
         },
         global: {
             // Force refresh of schema cache - resolves the "column not found in schema cache" error
-            headers: { 'x-refresh-schema-cache': 'true' }
+            // Add explicit role claim to bypass RLS policies
+            headers: { 
+                'x-refresh-schema-cache': 'true',
+                'Authorization': `Bearer ${config.supabaseServiceKey}`,
+                'apikey': config.supabaseServiceKey,
+                'x-supabase-role': 'service_role'
+            }
         }
     }
 );
+
+// Verify admin connection works
+supabaseAdmin.from('jobs').select('count').then(({ data, error }) => {
+    if (error) {
+        console.error('Error connecting to Supabase with admin client:', error);
+    } else {
+        console.log('Supabase admin client connected successfully. Jobs count:', data?.[0]?.count);
+    }
+}).catch(err => {
+    console.error('Failed to initialize Supabase admin client:', err);
+});
 
 // Helper function to handle Supabase errors
 export const handleSupabaseError = (error: Error | null): string => {

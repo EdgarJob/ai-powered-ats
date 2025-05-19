@@ -1,10 +1,18 @@
 // Simple script to check jobs in the database
 import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
+// Log the Supabase URL and key being used
+console.log('Using Supabase URL:', process.env.VITE_SUPABASE_URL || 'https://pdfgnqutqreluoetvfdh.supabase.co');
+console.log('Using Supabase Key:', (process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '').substring(0, 10) + '...');
 
 // Create Supabase client
 const supabase = createClient(
-    process.env.SUPABASE_URL || 'https://pdfgnqutqreluoetvfdh.supabase.co',
-    process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkZmducXV0cXJlbHVvZXR2ZmRoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcxMzY1MDQ5MCwiZXhwIjoyMDI5MjI2NDkwfQ.s3HPUX4NN_mP0ZsfQz5rU7j1TmZ-Mzs72TH_tShW1GI'
+    process.env.VITE_SUPABASE_URL || 'https://pdfgnqutqreluoetvfdh.supabase.co',
+    process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkZmducXV0cXJlbHVvZXR2ZmRoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcxMzY1MDQ5MCwiZXhwIjoyMDI5MjI2NDkwfQ.s3HPUX4NN_mP0ZsfQz5rU7j1TmZ-Mzs72TH_tShW1GI'
 );
 
 const checkJobs = async () => {

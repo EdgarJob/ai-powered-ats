@@ -123,12 +123,130 @@ export function AIMatching() {
     const [success, setSuccess] = useState<string | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [usingAI, setUsingAI] = useState<boolean>(false);
+    const [showFallbackData, setShowFallbackData] = useState(false);
+
+    // Fallback sample data
+    const fallbackJobs: Job[] = [
+        {
+            id: 'job-1',
+            title: 'Senior Software Engineer',
+            description: 'We are looking for an experienced software engineer proficient in React, Node.js, and cloud technologies to join our engineering team.',
+            requirements: ['React', 'Node.js', 'TypeScript', 'AWS', '5+ years experience'],
+            responsibilities: 'Design and develop scalable web applications, collaborate with cross-functional teams, mentor junior developers.',
+            status: 'published',
+            created_at: new Date().toISOString()
+        },
+        {
+            id: 'job-2',
+            title: 'Product Manager',
+            description: 'Seeking a product manager to lead product strategy and roadmap planning for our SaaS platform.',
+            requirements: ['3+ years product management', 'SaaS experience', 'User research', 'Agile methodologies'],
+            responsibilities: 'Define product vision, create roadmaps, work with engineering teams to deliver features.',
+            status: 'published',
+            created_at: new Date().toISOString()
+        },
+        {
+            id: 'job-3',
+            title: 'UX/UI Designer',
+            description: 'Join our design team to create beautiful, intuitive interfaces for our enterprise software products.',
+            requirements: ['Figma', 'User research', 'Interaction design', 'Design systems'],
+            responsibilities: 'Create wireframes, prototypes, and visual designs. Conduct user research and testing.',
+            status: 'published',
+            created_at: new Date().toISOString()
+        }
+    ];
+
+    const fallbackCandidates: Candidate[] = [
+        {
+            id: 'candidate-1',
+            first_name: 'John',
+            last_name: 'Smith',
+            email: 'john.smith@example.com',
+            bio: 'Software engineer with 6 years of experience in full-stack development using React, Node.js, and AWS.',
+            location: 'San Francisco, CA',
+            education_level: 'Bachelor',
+            employment_history: [
+                {
+                    company: 'Tech Solutions Inc',
+                    position: 'Senior Developer',
+                    description: 'Led the development of React-based frontend applications and Node.js microservices.'
+                },
+                {
+                    company: 'WebApps Co',
+                    position: 'JavaScript Developer',
+                    description: 'Built responsive web applications using modern JavaScript frameworks.'
+                }
+            ],
+            certifications: [
+                {
+                    name: 'AWS Certified Developer',
+                    issuer: 'Amazon Web Services'
+                }
+            ]
+        },
+        {
+            id: 'candidate-2',
+            first_name: 'Sarah',
+            last_name: 'Johnson',
+            email: 'sarah.johnson@example.com',
+            bio: 'Product manager with experience in SaaS products and agile methodologies.',
+            location: 'New York, NY',
+            education_level: 'Masters',
+            employment_history: [
+                {
+                    company: 'SaaS Platform Inc',
+                    position: 'Product Manager',
+                    description: 'Led product strategy and roadmap planning for enterprise SaaS platform.'
+                },
+                {
+                    company: 'Software Solutions',
+                    position: 'Associate Product Manager',
+                    description: 'Assisted in feature prioritization and user research.'
+                }
+            ],
+            certifications: [
+                {
+                    name: 'Certified Scrum Product Owner',
+                    issuer: 'Scrum Alliance'
+                }
+            ]
+        },
+        {
+            id: 'candidate-3',
+            first_name: 'Michael',
+            last_name: 'Wong',
+            email: 'michael.wong@example.com',
+            bio: 'UI/UX designer specializing in creating intuitive interfaces and design systems.',
+            location: 'Seattle, WA',
+            education_level: 'Bachelor',
+            employment_history: [
+                {
+                    company: 'Design Agency',
+                    position: 'Senior UX Designer',
+                    description: 'Created wireframes, prototypes, and visual designs for enterprise clients.'
+                },
+                {
+                    company: 'Tech Startup',
+                    position: 'UI Designer',
+                    description: 'Designed user interfaces for mobile and web applications.'
+                }
+            ],
+            certifications: [
+                {
+                    name: 'UX Certification',
+                    issuer: 'Nielsen Norman Group'
+                }
+            ]
+        }
+    ];
 
     // Fetch jobs and candidates on component mount
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
+                setError(null);
+                setShowFallbackData(false);
 
                 // Fetch jobs
                 const { data: jobsData, error: jobsError } = await supabaseAdmin
@@ -136,22 +254,55 @@ export function AIMatching() {
                     .select('*')
                     .eq('status', 'published');
 
-                if (jobsError) throw jobsError;
+                if (jobsError) {
+                    console.error('Error fetching jobs:', jobsError);
+                    setError('Failed to connect to the database. Showing sample data instead.');
+
+                    // Show fallback data after timeout
+                    setTimeout(() => {
+                        setShowFallbackData(true);
+                        setJobs(fallbackJobs);
+                        setCandidates(fallbackCandidates);
+                        setLoading(false);
+                    }, 2000);
+
+                    return;
+                }
 
                 // Fetch candidates
                 const { data: candidatesData, error: candidatesError } = await supabaseAdmin
                     .from('candidates')
                     .select('*');
 
-                if (candidatesError) throw candidatesError;
+                if (candidatesError) {
+                    console.error('Error fetching candidates:', candidatesError);
+                    setError('Failed to connect to the database. Showing sample data instead.');
+
+                    // Show fallback data after timeout
+                    setTimeout(() => {
+                        setShowFallbackData(true);
+                        setJobs(jobsData || fallbackJobs);
+                        setCandidates(fallbackCandidates);
+                        setLoading(false);
+                    }, 2000);
+
+                    return;
+                }
 
                 setJobs(jobsData || []);
                 setCandidates(candidatesData || []);
+                setLoading(false);
             } catch (err) {
                 console.error('Error fetching data:', err);
-                setError('Failed to load jobs and candidates. Please try again.');
-            } finally {
-                setLoading(false);
+                setError('Failed to load jobs and candidates. Showing sample data instead.');
+
+                // Show fallback data
+                setTimeout(() => {
+                    setShowFallbackData(true);
+                    setJobs(fallbackJobs);
+                    setCandidates(fallbackCandidates);
+                    setLoading(false);
+                }, 2000);
             }
         };
 
@@ -233,8 +384,9 @@ export function AIMatching() {
 
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                <CircularProgress />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', my: 4 }}>
+                <CircularProgress size={60} sx={{ mb: 3 }} />
+                <Typography variant="h6">Loading AI Matching Data...</Typography>
             </Box>
         );
     }
@@ -244,6 +396,12 @@ export function AIMatching() {
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 500 }}>
                 AI Candidate Matching
             </Typography>
+
+            {showFallbackData && (
+                <Alert severity="info" sx={{ mb: 3 }}>
+                    Database connection failed. Showing sample data for demonstration purposes.
+                </Alert>
+            )}
 
             <Typography variant="body1" color="text.secondary" paragraph>
                 Use AI to find the best candidates for your job openings based on skills, experience, and education.

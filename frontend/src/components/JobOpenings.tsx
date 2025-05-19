@@ -1,15 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Typography, Button, Select, MenuItem, FormControl, InputLabel, Alert, TextField, Card, CardContent, Chip, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Button, Select, MenuItem, FormControl, InputLabel, Alert, TextField, Card, CardContent, Chip, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Link as MuiLink } from '@mui/material';
 import { supabaseAdmin, supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import type { Job } from '../lib/database.types';
+import config from '../lib/config';
+import { useAuth } from '../lib/AuthContext';
 
 // Sorting options
 type SortField = 'created_at' | 'title';
 type SortOrder = 'asc' | 'desc';
 
+// Type for job metadata
+interface JobMetadata {
+    industry?: string;
+    location?: string;
+    field?: string;
+    deadline?: string;
+    responsibilities?: string;
+    [key: string]: any; // Allow other properties
+}
+
 export function JobOpenings() {
+    const { user, userRole } = useAuth();
     const [industryFilter, setIndustryFilter] = useState<string>('all');
     const [locationFilter, setLocationFilter] = useState<string>('all');
     const [fieldFilter, setFieldFilter] = useState<string>('all');
@@ -19,87 +32,262 @@ export function JobOpenings() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
     const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+    const [supabaseError, setSupabaseError] = useState<string | null>(null);
+    const [debugInfo, setDebugInfo] = useState<any>(null);
+    const [loadingTimeout, setLoadingTimeout] = useState(false);
+    const [showFallbackContent, setShowFallbackContent] = useState(false);
+    const [manualJobs, setManualJobs] = useState<Job[]>([]);
+    const [manualLoading, setManualLoading] = useState(true);
 
     const navigate = useNavigate();
 
-    // Get current date for deadline comparisons
-    const today = new Date();
+    // Set a timeout for loading state
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setLoadingTimeout(true);
+        }, 5000); // 5 seconds
 
-    // Use supabaseAdmin client to ensure we can access all published jobs
-    const { data: jobs, isLoading, error } = useQuery({
-        queryKey: ['job-openings', refreshTrigger, sortField, sortOrder],
-        queryFn: async () => {
-            console.log('Fetching job openings...');
+        const fallbackTimer = setTimeout(() => {
+            setShowFallbackContent(true);
+        }, 10000); // 10 seconds
 
-            // Only fetch published jobs using admin client
-            const { data, error } = await supabaseAdmin
-                .from('jobs')
-                .select('*')
-                .eq('status', 'published')
-                .order(sortField, { ascending: sortOrder === 'asc' });
+        return () => {
+            clearTimeout(timer);
+            clearTimeout(fallbackTimer);
+        };
+    }, []);
 
-            if (error) {
-                console.error('Error fetching job openings:', error);
-                throw error;
-            }
+    // Manual job fetching
+    useEffect(() => {
+        const fetchJobsManually = async () => {
+            try {
+                console.log('Manually fetching jobs...');
+                const { data, error } = await supabaseAdmin
+                    .from('jobs')
+                    .select('*');
 
-            console.log('Job openings fetched:', data);
+                if (error) {
+                    console.error('Error fetching jobs manually:', error);
+                    setSupabaseError(error.message);
 
-            // Process each job to extract metadata and format for display
-            const processedJobs = data?.map(job => {
-                let metadata: {
-                    deadline?: string,
-                    industry?: string,
-                    location?: string,
-                    field?: string,
-                    responsibilities?: string
-                } = {};
+                    // Immediately use fallback data on error
+                    console.log('Using fallback jobs due to database error');
+                    setManualJobs(fallbackJobs as unknown as Job[]);
+                    setShowFallbackContent(true);
+                    setManualLoading(false);
+                } else {
+                    console.log('Manual job fetch successful:', data);
 
-                // Extract metadata - handle both string and object formats
-                if (job.metadata) {
-                    try {
-                        if (typeof job.metadata === 'string') {
-                            // Parse if it's a string
-                            metadata = JSON.parse(job.metadata);
-                        } else if (typeof job.metadata === 'object') {
-                            // Direct assignment if it's already an object
-                            metadata = job.metadata;
+                    // Process the jobs
+                    const processedJobs = data.map(job => {
+                        let metadata: JobMetadata = {};
+
+                        // Extract metadata
+                        if (job.metadata) {
+                            try {
+                                if (typeof job.metadata === 'string') {
+                                    metadata = JSON.parse(job.metadata) as JobMetadata;
+                                } else if (typeof job.metadata === 'object') {
+                                    metadata = job.metadata as JobMetadata;
+                                }
+                            } catch (e) {
+                                console.error('Error parsing metadata for job', job.id, e);
+                            }
                         }
-                    } catch (e) {
-                        console.error('Error parsing metadata for job', job.id, e);
+
+                        return {
+                            ...job,
+                            industry: metadata.industry || null,
+                            location: metadata.location || null,
+                            field: metadata.field || null,
+                            deadline: metadata.deadline || null,
+                            requirements: job.requirements || [],
+                            responsibilities: job.responsibilities || metadata.responsibilities || null
+                        };
+                    });
+
+                    // If no jobs found, use fallback jobs
+                    if (processedJobs.length === 0) {
+                        console.log('No jobs found, using fallback jobs');
+                        setManualJobs(fallbackJobs as unknown as Job[]);
+                    } else {
+                        setManualJobs(processedJobs);
                     }
+
+                    setManualLoading(false);
                 }
+            } catch (err) {
+                console.error('Exception in manual job fetch:', err);
+                setSupabaseError(err instanceof Error ? err.message : String(err));
 
-                // Extract values from metadata
-                const industry = metadata?.industry || null;
-                const location = metadata?.location || null;
-                const field = metadata?.field || null;
-                const deadline = metadata?.deadline || null;
+                // Immediately use fallback data on exception
+                console.log('Using fallback jobs due to exception');
+                setManualJobs(fallbackJobs as unknown as Job[]);
+                setShowFallbackContent(true);
+                setManualLoading(false);
+            }
+        };
 
-                // Format the processed job data
-                return {
-                    ...job,
-                    deadline: deadline,
-                    industry: industry,
-                    location: location,
-                    field: field,
-                    responsibilities: job.responsibilities || metadata.responsibilities || null
-                };
-            });
+        fetchJobsManually();
+    }, [refreshTrigger]);
 
-            return processedJobs as Job[];
+    // Log Supabase configuration for debugging
+    useEffect(() => {
+        console.log('JobOpenings - Supabase URL:', config.supabaseUrl);
+        console.log('JobOpenings - Using service role key?', !!config.supabaseServiceKey);
+        console.log('JobOpenings - Environment:', config.environment);
+
+        // Quick check to see if we can fetch any jobs
+        const checkJobs = async () => {
+            try {
+                const { data, error } = await supabaseAdmin
+                    .from('jobs')
+                    .select('id, status')
+                    .limit(10);
+
+                console.log('Quick jobs check result:', { data, error });
+                setDebugInfo({ jobsCheck: { data, error } });
+            } catch (err) {
+                console.error('Error in quick jobs check:', err);
+                setDebugInfo({ jobsCheckError: err instanceof Error ? err.message : String(err) });
+            }
+        };
+
+        checkJobs();
+    }, []);
+
+    // Fallback jobs for demonstration
+    const fallbackJobs = [
+        {
+            id: 'sample-1',
+            title: 'Software Engineer',
+            description: 'We are looking for a skilled software engineer to join our development team.',
+            created_at: new Date().toISOString(),
+            industry: 'Technology',
+            location: 'Remote',
+            field: 'Software Development',
+            requirements: ['JavaScript', 'React', 'Node.js'],
+            responsibilities: '- Develop web applications\n- Write clean code\n- Work with cross-functional teams'
         },
-        staleTime: 10000,
-        refetchOnWindowFocus: true,
-    });
+        {
+            id: 'sample-2',
+            title: 'Product Manager',
+            description: 'Join our product team to lead the development of innovative products.',
+            created_at: new Date().toISOString(),
+            industry: 'Technology',
+            location: 'New York, NY',
+            field: 'Product Management',
+            requirements: ['Product Management', 'Agile', 'User Experience'],
+            responsibilities: '- Define product roadmap\n- Gather requirements\n- Work with engineering teams'
+        }
+    ];
+
+    // Show general error message
+    if (supabaseError) {
+        return (
+            <Box p={4}>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    Error connecting to database: {supabaseError}
+                </Alert>
+                <Button variant="contained" onClick={() => {
+                    setSupabaseError(null);
+                    setRefreshTrigger(prev => prev + 1);
+                }} sx={{ mr: 2 }}>
+                    Try Again
+                </Button>
+                <Button
+                    component={Link}
+                    to="/diagnostics"
+                    variant="outlined"
+                >
+                    Run Diagnostics
+                </Button>
+                {debugInfo && (
+                    <Box mt={4} p={2} bgcolor="#f5f5f5" borderRadius={2}>
+                        <Typography variant="h6">Debug Information</Typography>
+                        <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+                    </Box>
+                )}
+            </Box>
+        );
+    }
+
+    if (manualLoading) {
+        return (
+            <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="50vh" p={4}>
+                <CircularProgress size={60} sx={{ mb: 3 }} />
+                <Typography variant="h6" gutterBottom>Loading Job Openings...</Typography>
+
+                {loadingTimeout && !showFallbackContent && (
+                    <Box mt={3} textAlign="center" maxWidth="600px">
+                        <Alert severity="info" sx={{ mb: 2 }}>
+                            This is taking longer than expected. We're still trying to connect to the database.
+                        </Alert>
+                        <Button
+                            component={Link}
+                            to="/diagnostics"
+                            variant="outlined"
+                            sx={{ mt: 2 }}
+                        >
+                            Run Diagnostics
+                        </Button>
+                    </Box>
+                )}
+
+                {showFallbackContent && (
+                    <Box mt={3} textAlign="center" maxWidth="600px">
+                        <Alert severity="warning" sx={{ mb: 2 }}>
+                            We're having trouble connecting to the database. You can view sample job listings below or check the diagnostics page.
+                        </Alert>
+                        <Box display="flex" justifyContent="center" gap={2} mt={2}>
+                            <Button
+                                onClick={() => navigate('/diagnostics')}
+                                variant="contained"
+                            >
+                                Run Diagnostics
+                            </Button>
+                            <Button
+                                onClick={() => setRefreshTrigger(prev => prev + 1)}
+                                variant="outlined"
+                            >
+                                Try Again
+                            </Button>
+                        </Box>
+
+                        {/* Show fallback content */}
+                        <Box mt={4}>
+                            <Typography variant="h5" gutterBottom>Sample Job Listings</Typography>
+                            <Typography variant="body2" color="text.secondary" paragraph>
+                                These are sample listings while we try to connect to the database.
+                            </Typography>
+
+                            {fallbackJobs.map(job => (
+                                <Card key={job.id} sx={{ mt: 2, borderRadius: 2, boxShadow: 2 }}>
+                                    <CardContent>
+                                        <Typography variant="h6">{job.title}</Typography>
+                                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            {job.location} • {job.industry}
+                                        </Typography>
+                                        <Typography variant="body1" paragraph>
+                                            {job.description}
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </Box>
+                    </Box>
+                )}
+            </Box>
+        );
+    }
 
     // Get unique values for filters
-    const uniqueIndustries = ['all', ...new Set(jobs?.map(job => job.industry).filter(Boolean))] as string[];
-    const uniqueLocations = ['all', ...new Set(jobs?.map(job => job.location).filter(Boolean))] as string[];
-    const uniqueFields = ['all', ...new Set(jobs?.map(job => job.field).filter(Boolean))] as string[];
+    const uniqueIndustries = ['all', ...new Set(manualJobs.map(job => job.industry).filter(Boolean))] as string[];
+    const uniqueLocations = ['all', ...new Set(manualJobs.map(job => job.location).filter(Boolean))] as string[];
+    const uniqueFields = ['all', ...new Set(manualJobs.map(job => job.field).filter(Boolean))] as string[];
 
     // Apply filters and search
-    const filteredJobs = jobs?.filter(job => {
+    const filteredJobs = manualJobs.filter(job => {
         // Check if the job matches all active filters
         const matchesIndustry = industryFilter === 'all' || job.industry === industryFilter;
         const matchesLocation = locationFilter === 'all' || job.location === locationFilter;
@@ -139,25 +327,38 @@ export function JobOpenings() {
 
     // Handle apply button click
     const handleApply = async (jobId: string) => {
-        // Check if user is authenticated
-        const { data } = await supabase.auth.getUser();
-
-        if (data.user) {
-            // User is authenticated, navigate to application page
-            navigate(`/apply/${jobId}`);
-        } else {
-            // User is not authenticated, show login/register dialog
+        // Check if user is logged in
+        if (!user) {
+            // Set the selected job ID
             setSelectedJobId(jobId);
+            // Open the login dialog
             setIsLoginDialogOpen(true);
+        } else {
+            // User is logged in, navigate to application page
+            navigate(`/apply/${jobId}`);
         }
     };
 
-    // Handle login action
     const handleLogin = () => {
         setIsLoginDialogOpen(false);
-        // Navigate to login page with return URL
-        navigate('/register', { state: { returnTo: selectedJobId ? `/apply/${selectedJobId}` : '/' } });
+        if (selectedJobId) {
+            navigate(`/login`, { state: { from: `/apply/${selectedJobId}` } });
+        } else {
+            navigate('/login');
+        }
     };
+
+    const handleRegister = () => {
+        setIsLoginDialogOpen(false);
+        if (selectedJobId) {
+            navigate(`/register`, { state: { returnTo: `/apply/${selectedJobId}` } });
+        } else {
+            navigate('/register');
+        }
+    };
+
+    // Get current date for deadline comparisons
+    const today = new Date();
 
     // Check if a job deadline has passed
     const isDeadlinePassed = (deadline: string) => {
@@ -166,21 +367,33 @@ export function JobOpenings() {
         return deadlineDate < today;
     };
 
-    if (isLoading) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-                <CircularProgress />
-            </Box>
-        );
-    }
-
-    if (error) {
-        return (
-            <Box p={4} color="error.main">
-                Error loading job openings: {(error as Error).message}
-            </Box>
-        );
-    }
+    // Login/Register dialog
+    const loginDialog = (
+        <Dialog open={isLoginDialogOpen} onClose={() => setIsLoginDialogOpen(false)}>
+            <DialogTitle>Create an Account or Login</DialogTitle>
+            <DialogContent>
+                <Typography variant="body1" gutterBottom>
+                    You need to create an account or login to apply for this job.
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    Creating an account allows you to track your applications and manage your profile.
+                </Typography>
+            </DialogContent>
+            <DialogActions sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
+                <Button onClick={() => setIsLoginDialogOpen(false)} color="inherit">
+                    Cancel
+                </Button>
+                <Box>
+                    <Button onClick={handleRegister} color="primary" variant="outlined" sx={{ mr: 1 }}>
+                        Create Account
+                    </Button>
+                    <Button onClick={handleLogin} color="primary" variant="contained">
+                        Login
+                    </Button>
+                </Box>
+            </DialogActions>
+        </Dialog>
+    );
 
     return (
         <Box maxWidth="lg" mx="auto" p={3}>
@@ -278,11 +491,11 @@ export function JobOpenings() {
             </Box>
 
             {/* Job Results */}
-            {filteredJobs?.length === 0 ? (
+            {filteredJobs.length === 0 ? (
                 <Alert severity="info">No job openings match your filters. Try adjusting your search criteria.</Alert>
             ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    {filteredJobs?.map(job => (
+                    {filteredJobs.map(job => (
                         <Card key={job.id} sx={{ borderRadius: 2, boxShadow: 2, overflow: 'visible' }}>
                             <CardContent sx={{ p: 3 }}>
                                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
@@ -411,25 +624,8 @@ export function JobOpenings() {
                 </Box>
             )}
 
-            {/* Login Dialog */}
-            <Dialog open={isLoginDialogOpen} onClose={() => setIsLoginDialogOpen(false)}>
-                <DialogTitle>Authentication Required</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body1">
-                        You need to be logged in to apply for this job. Would you like to login or register now?
-                    </Typography>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setIsLoginDialogOpen(false)}>Cancel</Button>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={handleLogin}
-                    >
-                        Login / Register
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            {/* Add login/register dialog */}
+            {loginDialog}
         </Box>
     );
 } 

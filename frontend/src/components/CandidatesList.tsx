@@ -100,6 +100,7 @@ export function CandidatesList() {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [showFallbackData, setShowFallbackData] = useState(false);
 
     // Add filtering state
     const [searchTerm, setSearchTerm] = useState('');
@@ -113,8 +114,90 @@ export function CandidatesList() {
     const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
     const [uniqueEducationLevels, setUniqueEducationLevels] = useState<string[]>([]);
 
-    // Modified fetchCandidates to extract unique filter values
-    useEffect(() => {
+    // Sample fallback candidate data that matches the Candidate interface
+    const fallbackCandidates: Candidate[] = [
+        {
+            id: 'sample-1',
+            first_name: 'John',
+            last_name: 'Doe',
+            email: 'john.doe@example.com',
+            phone: '555-123-4567',
+            bio: 'Software engineer with 5 years of experience',
+            gender: 'Male',
+            location: 'San Francisco, CA',
+            date_of_birth: '1990-01-15',
+            education_level: 'Bachelor',
+            certifications: [{ id: '1', name: 'AWS Certified Developer', issuer: 'Amazon', date_acquired: '2021-03-10' }],
+            employment_history: [
+                {
+                    id: '1',
+                    company: 'Tech Corp',
+                    position: 'Senior Developer',
+                    start_date: '2018-06-01',
+                    is_current: true,
+                    description: 'Full-stack development'
+                }
+            ],
+            created_at: new Date().toISOString(),
+            status: 'applied',
+            job_id: 'job-1'
+        },
+        {
+            id: 'sample-2',
+            first_name: 'Jane',
+            last_name: 'Smith',
+            email: 'jane.smith@example.com',
+            phone: '555-987-6543',
+            bio: 'Product manager with MBA',
+            gender: 'Female',
+            location: 'New York, NY',
+            date_of_birth: '1988-07-22',
+            education_level: 'Masters',
+            certifications: [{ id: '1', name: 'PMP', issuer: 'PMI', date_acquired: '2019-05-20' }],
+            employment_history: [
+                {
+                    id: '1',
+                    company: 'Product Inc',
+                    position: 'Product Manager',
+                    start_date: '2017-03-15',
+                    is_current: true,
+                    description: 'Managing product roadmap'
+                }
+            ],
+            created_at: new Date().toISOString(),
+            status: 'interviewing',
+            job_id: 'job-2'
+        },
+        {
+            id: 'sample-3',
+            first_name: 'Alex',
+            last_name: 'Johnson',
+            email: 'alex.johnson@example.com',
+            phone: '555-456-7890',
+            bio: 'Data scientist specializing in ML',
+            gender: 'Non-binary',
+            location: 'Austin, TX',
+            date_of_birth: '1992-11-30',
+            education_level: 'PhD',
+            certifications: [{ id: '1', name: 'TensorFlow Developer', issuer: 'Google', date_acquired: '2022-01-15' }],
+            employment_history: [
+                {
+                    id: '1',
+                    company: 'AI Solutions',
+                    position: 'Data Scientist',
+                    start_date: '2020-02-01',
+                    is_current: true,
+                    description: 'Developing ML models'
+                }
+            ],
+            created_at: new Date().toISOString(),
+            status: 'rejected',
+            job_id: 'job-3'
+        }
+    ];
+
+    // Add a function to the component that serves as a retry mechanism
+    const refetchCandidates = async () => {
         const fetchCandidates = async () => {
             try {
                 setLoading(true);
@@ -126,14 +209,21 @@ export function CandidatesList() {
                     .order('created_at', { ascending: false });
 
                 if (error) {
-                    throw error;
+                    console.error('Error fetching candidates:', error);
+                    setError(error.message);
+
+                    // Show fallback data after a timeout
+                    setTimeout(() => {
+                        setShowFallbackData(true);
+                        setCandidates(fallbackCandidates);
+                        setLoading(false);
+                    }, 2000);
+
+                    return;
                 }
 
-                setCandidates(data || []);
-
-                // Extract unique values for filters
                 if (data) {
-                    // Get unique locations
+                    // Extract unique values for filters
                     const locations = data
                         .map(candidate => candidate.location)
                         .filter((location): location is string =>
@@ -141,7 +231,6 @@ export function CandidatesList() {
                         .filter((value, index, self) => self.indexOf(value) === index)
                         .sort();
 
-                    // Get unique education levels
                     const educationLevels = data
                         .map(candidate => candidate.education_level)
                         .filter((level): level is string =>
@@ -151,16 +240,27 @@ export function CandidatesList() {
 
                     setUniqueLocations(locations);
                     setUniqueEducationLevels(educationLevels);
+                    setCandidates(data);
                 }
-            } catch (err) {
-                console.error('Error fetching candidates:', err);
-                setError('Failed to load candidates. Please try again later.');
-            } finally {
+
                 setLoading(false);
+            } catch (err) {
+                console.error('Exception fetching candidates:', err);
+                setError(err instanceof Error ? err.message : String(err));
+                setLoading(false);
+
+                // Show fallback data after error
+                setShowFallbackData(true);
+                setCandidates(fallbackCandidates);
             }
         };
 
-        fetchCandidates();
+        await fetchCandidates();
+    };
+
+    // Replace the useEffect hook to use refetchCandidates
+    useEffect(() => {
+        refetchCandidates();
     }, []);
 
     // Add sorting handlers
@@ -198,7 +298,7 @@ export function CandidatesList() {
     };
 
     // Filter and sort the candidates
-    const filteredCandidates = candidates
+    const processedCandidates = candidates
         .filter((candidate) => {
             // Apply search term filter (case-insensitive)
             const searchTermLower = searchTerm.toLowerCase();
@@ -492,19 +592,42 @@ export function CandidatesList() {
         );
     };
 
+    // In the render section, add a banner indicating fallback data
+    if (loading) {
+        return (
+            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" p={4} minHeight="60vh">
+                <CircularProgress size={60} sx={{ mb: 3 }} />
+                <Typography variant="h6">Loading Candidates...</Typography>
+            </Box>
+        );
+    }
+
+    if (error && !showFallbackData) {
+        return (
+            <Box p={4}>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    Error: {error}
+                </Alert>
+                <Button variant="contained" onClick={refetchCandidates}>Retry</Button>
+            </Box>
+        );
+    }
+
     return (
         <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
             <Typography variant="h4" gutterBottom>Registered Candidates</Typography>
+
+            {showFallbackData && (
+                <Alert severity="info" sx={{ mb: 3 }}>
+                    Database connection failed. Showing sample candidate data for demonstration purposes.
+                </Alert>
+            )}
 
             {error && (
                 <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
             )}
 
-            {loading ? (
-                <Box display="flex" justifyContent="center" my={5}>
-                    <CircularProgress />
-                </Box>
-            ) : candidates.length === 0 ? (
+            {candidates.length === 0 ? (
                 <Alert severity="info">No candidates have registered yet.</Alert>
             ) : (
                 <>
@@ -616,7 +739,7 @@ export function CandidatesList() {
                     {/* Results summary */}
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="body2" color="text.secondary">
-                            Showing {filteredCandidates.length} of {candidates.length} candidates
+                            Showing {processedCandidates.length} of {candidates.length} candidates
                         </Typography>
                     </Box>
 
@@ -673,7 +796,7 @@ export function CandidatesList() {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {filteredCandidates
+                                {processedCandidates
                                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                     .map((candidate) => (
                                         <TableRow key={candidate.id} hover>
@@ -705,7 +828,7 @@ export function CandidatesList() {
                                         </TableRow>
                                     ))}
 
-                                {filteredCandidates.length === 0 && (
+                                {processedCandidates.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
                                             <Typography variant="body1" color="text.secondary">
@@ -721,7 +844,7 @@ export function CandidatesList() {
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
-                        count={filteredCandidates.length}
+                        count={processedCandidates.length}
                         rowsPerPage={rowsPerPage}
                         page={page}
                         onPageChange={handleChangePage}
