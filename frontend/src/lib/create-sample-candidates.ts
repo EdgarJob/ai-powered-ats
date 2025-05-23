@@ -1,5 +1,7 @@
-import { supabase, supabaseAdmin } from './supabase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import { auth, db } from './firebase';
 
 // Define candidate types with more detailed backgrounds
 interface CandidateData {
@@ -184,99 +186,86 @@ export async function createSampleCandidates(): Promise<{success: boolean, messa
       try {
         console.log(`Creating candidate: ${candidate.firstName} ${candidate.lastName} (${candidate.email})`);
         
-        // Create auth account
-        const { data, error } = await supabase.auth.signUp({
-          email: candidate.email,
-          password: candidate.password,
-        });
-
-        if (error) {
-          console.error(`Error creating auth account for ${candidate.email}:`, error);
-          errors.push(`${candidate.email}: ${error.message}`);
-          continue;
-        }
-
-        if (!data.user) {
+        // Create auth account using Firebase
+        const userCredential = await createUserWithEmailAndPassword(
+          auth, 
+          candidate.email, 
+          candidate.password
+        );
+        
+        if (!userCredential.user) {
           console.error(`User not created for ${candidate.email}`);
           errors.push(`${candidate.email}: User creation failed`);
           continue;
         }
 
-        console.log(`Auth account created for ${candidate.email} with ID: ${data.user.id}`);
+        const userId = userCredential.user.uid;
+        console.log(`Auth account created for ${candidate.email} with ID: ${userId}`);
         
-        // Create user record
-        const { error: userError } = await supabaseAdmin
-          .from('users')
-          .insert([{
-            id: data.user.id,
-            email: candidate.email,
-            role: 'member',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }]);
+        // Create user record in Firestore
+        const userDocRef = doc(db, 'users', userId);
+        await setDoc(userDocRef, {
+          id: userId,
+          email: candidate.email,
+          role: 'member',
+          firstName: candidate.firstName,
+          lastName: candidate.lastName,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
         
-        if (userError) {
-          console.error(`Error creating user record for ${candidate.email}:`, userError);
-          errors.push(`${candidate.email}: ${userError.message}`);
-          continue;
-        }
-        
-        // Create candidate profile
+        // Create candidate profile in Firestore
         const candidateId = uuidv4();
-        const { error: candidateError } = await supabaseAdmin
-          .from('candidates')
-          .insert([{
-            id: candidateId,
-            user_id: data.user.id,
-            email: candidate.email,
-            first_name: candidate.firstName,
-            last_name: candidate.lastName,
-            full_name: `${candidate.firstName} ${candidate.lastName}`,
-            phone: candidate.phone,
-            location: candidate.location,
-            gender: candidate.gender,
-            date_of_birth: candidate.dateOfBirth,
-            bio: candidate.bio,
-            skills: candidate.skills,
-            education: candidate.education,
-            experience: candidate.experience,
-            is_technical: candidate.isTechnical,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }]);
+        const candidateDocRef = doc(db, 'candidates', candidateId);
+        await setDoc(candidateDocRef, {
+          id: candidateId,
+          userId: userId,
+          email: candidate.email,
+          firstName: candidate.firstName,
+          lastName: candidate.lastName,
+          fullName: `${candidate.firstName} ${candidate.lastName}`,
+          phone: candidate.phone,
+          location: candidate.location,
+          gender: candidate.gender,
+          dateOfBirth: candidate.dateOfBirth,
+          bio: candidate.bio,
+          skills: candidate.skills,
+          education: candidate.education,
+          experience: candidate.experience,
+          isTechnical: candidate.isTechnical,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
         
-        if (candidateError) {
-          console.error(`Error creating candidate profile for ${candidate.email}:`, candidateError);
-          errors.push(`${candidate.email}: ${candidateError.message}`);
-          continue;
-        }
-        
-        console.log(`Successfully created candidate: ${candidate.firstName} ${candidate.lastName}`);
-        createdCandidates.push(candidate.email);
-        
-      } catch (err) {
-        console.error(`Unexpected error for ${candidate.email}:`, err);
-        errors.push(`${candidate.email}: Unexpected error: ${err instanceof Error ? err.message : String(err)}`);
+        console.log(`Created candidate profile for ${candidate.email}`);
+        createdCandidates.push(`${candidate.firstName} ${candidate.lastName} (${candidate.email})`);
+      } catch (error) {
+        console.error(`Error creating candidate ${candidate.email}:`, error);
+        errors.push(`${candidate.email}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
-    
+
     if (errors.length === 0) {
-      return {
-        success: true,
-        message: `Successfully created ${createdCandidates.length} sample candidates`
+      return { 
+        success: true, 
+        message: `Successfully created ${createdCandidates.length} candidates.` 
+      };
+    } else if (createdCandidates.length > 0) {
+      return { 
+        success: true, 
+        message: `Created ${createdCandidates.length} candidates with ${errors.length} errors.` 
       };
     } else {
-      return {
-        success: false,
-        message: `Created ${createdCandidates.length} candidates with ${errors.length} errors: ${errors.join('; ')}`
+      return { 
+        success: false, 
+        message: `Failed to create candidates: ${errors.join(', ')}` 
       };
     }
-    
-  } catch (err) {
-    console.error('Error creating sample candidates:', err);
-    return {
-      success: false,
-      message: `Failed to create sample candidates: ${err instanceof Error ? err.message : String(err)}`
+  } catch (error) {
+    console.error('Error in createSampleCandidates:', error);
+    return { 
+      success: false, 
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}` 
     };
   }
 } 

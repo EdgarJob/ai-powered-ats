@@ -5,15 +5,15 @@ import { CircularProgress, Box } from '@mui/material';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
-    requiredRole?: 'admin' | 'member';
+    adminOnly?: boolean;
 }
 
-export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-    const { user, userRole, loading } = useAuth();
+export function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
+    const { user, isAdmin, loading } = useAuth();
     const location = useLocation();
 
-    console.log('ProtectedRoute - Current user role:', userRole);
-    console.log('ProtectedRoute - Required role:', requiredRole);
+    console.log('ProtectedRoute - Auth state:', { user: !!user, isAdmin, loading });
+    console.log('ProtectedRoute - adminOnly:', adminOnly);
 
     // Show loading spinner while checking authentication
     if (loading) {
@@ -35,18 +35,16 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     // If user is not logged in, redirect to login page
     if (!user) {
         console.log('ProtectedRoute - No user found, redirecting to login');
-        // Use Navigate component instead of window.location
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // If a specific role is required, check if user has the role
-    if (requiredRole && userRole !== requiredRole) {
-        console.log('ProtectedRoute - Role mismatch, redirecting');
-        // If admin role is required and user doesn't have it, redirect to job openings page
+    // If admin access is required but user is not an admin, redirect
+    if (adminOnly && !isAdmin) {
+        console.log('ProtectedRoute - Admin access required but user is not admin, redirecting');
         return <Navigate to="/" replace />;
     }
 
-    // User is logged in and has required role, render the children
+    // User is logged in and has required permissions, render the children
     console.log('ProtectedRoute - Access granted');
     return <>{children}</>;
 } 

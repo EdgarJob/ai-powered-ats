@@ -1,20 +1,13 @@
-// Simple script to check connection to remote Supabase instance
-import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
-import fetch from 'cross-fetch';
-import { randomUUID } from 'crypto';
+// Script to check connection to the local Supabase instance
+const { createClient } = require('@supabase/supabase-js');
+const { randomUUID } = require('crypto');
+require('dotenv').config();
 
-// Polyfill fetch
-global.fetch = fetch;
+// Set Supabase URL and key - using local connection
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
 
-// Load environment variables
-dotenv.config();
-
-// Set Supabase URL and key
-const supabaseUrl = 'https://pdfgnqutqreluoetvfdh.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkZmducXV0cXJlbHVvZXR2ZmRoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcxMzY1MDQ5MCwiZXhwIjoyMDI5MjI2NDkwfQ.s3HPUX4NN_mP0ZsfQz5rU7j1TmZ-Mzs72TH_tShW1GI';
-
-console.log('Checking connection to Supabase at URL:', supabaseUrl);
+console.log('Checking connection to local Supabase at URL:', supabaseUrl);
 
 // Create Supabase client
 const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -56,10 +49,36 @@ async function checkConnection() {
             console.log('Organization created successfully:', orgData);
         }
 
+        // Create a test job
+        const jobTitle = `Test Job ${new Date().toISOString()}`;
+        const jobId = randomUUID();
+
+        console.log(`Creating test job "${jobTitle}" with ID: ${jobId}`);
+
+        const { data: jobData, error: jobError } = await supabase
+            .from('jobs')
+            .insert([
+                {
+                    id: jobId,
+                    org_id: orgId,
+                    title: jobTitle,
+                    description: 'This is a test job description',
+                    requirements: ['Test skill 1', 'Test skill 2'],
+                    status: 'published',
+                    created_by: orgId
+                }
+            ])
+            .select();
+
+        if (jobError) {
+            console.error('Error creating job:', jobError);
+        } else {
+            console.log('Job created successfully:', jobData);
+        }
+
     } catch (error) {
         console.error('Unexpected error:', error);
     }
 }
 
-// Run the check
 checkConnection(); 
