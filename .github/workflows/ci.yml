@@ -10,11 +10,11 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - uses: pnpm/action-setup@v2
         with:
-          version: 10.11.0
-      - uses: actions/setup-node@v4
+          version: 8.15.0
+      - uses: actions/setup-node@v3
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -26,15 +26,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - uses: pnpm/action-setup@v2
         with:
-          version: 10.11.0
-      - uses: actions/setup-node@v4
+          version: 8.15.0
+      - uses: actions/setup-node@v3
         with:
           node-version: '20'
           cache: 'pnpm'
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -53,12 +53,12 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - uses: pnpm/action-setup@v2
         with:
-          version: 10.11.0
+          version: 8.15.0
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: 20
           cache: 'pnpm'
