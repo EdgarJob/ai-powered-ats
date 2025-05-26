@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { signIn } from './lib/auth-service';
 
 function App() {
@@ -121,6 +121,7 @@ function LoginPage() {
     const [password, setPassword] = React.useState('');
     const [error, setError] = React.useState('');
     const [loading, setLoading] = React.useState(false);
+    const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -130,7 +131,9 @@ function LoginPage() {
         try {
             const userCredential = await signIn(email, password);
             console.log('Logged in successfully:', userCredential.user);
-            // You can add navigation here after successful login
+
+            // 🎉 Navigate to dashboard after successful login
+            navigate('/dashboard');
         } catch (error) {
             console.error('Login error:', error);
             setError('Failed to login. Please check your credentials.');
