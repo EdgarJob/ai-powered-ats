@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own data, admins can read any user data
+      allow read: if isOwner(userId) || isAdmin();
+      // Users can create/update their own profile
+      allow create, update: if isOwner(userId) || isAdmin();
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Jobs collection
+    match /jobs/{jobId} {
+      // Published jobs are readable by anyone
+      allow read: if resource.data.status == 'published' || isAuthenticated();
+      // Only admins can create/update/delete jobs
+      allow write: if isAdmin();
+    }
+    
+    // Candidates collection
+    match /candidates/{candidateId} {
+      // Candidates can read their own profile, admins can read any
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      // Candidates can create their own profile
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      // Users can update their own profile, admins can update any
+      allow update: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      // Only admins or the owner can delete profiles
+      allow delete: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
+    // Job applications collection
+    match /applications/{applicationId} {
+      // Users can read applications they've submitted, admins can read any
+      allow read: if isAuthenticated() && 
+        (resource.data.candidateId in get(/databases/$(database)/documents/candidates).where('userId', '==', request.auth.uid)).map(doc => doc.id) || 
+        isAdmin();
+      // Users can create applications for themselves
+      allow create: if isAuthenticated() && 
+        request.resource.data.candidateId in get(/databases/$(database)/documents/candidates).where('userId', '==', request.auth.uid)).map(doc => doc.id);
+      // Only admins can update the status of applications
+      allow update: if isAdmin();
+      // Only admins can delete applications
+      allow delete: if isAdmin();
+    }
+  }
+} 

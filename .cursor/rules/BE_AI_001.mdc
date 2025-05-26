@@ -1,0 +1,57 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# OpenAI Service Integration Pattern
+
+**Goal for AI:** Implement OpenAI API calls with proper error handling, fallback mechanisms, and structured response parsing.
+
+**Constraint/Guideline:**
+- Always check for API key availability before making requests
+- Implement fallback mechanisms when API calls fail
+- Use structured prompts with clear instructions for the AI model
+- Parse JSON responses safely with proper error handling
+- Log API usage and responses for debugging
+- Use environment variables for API configuration
+
+**Example (Good):**
+```typescript
+export async function analyzeJobMatch(
+  jobRequirements: string[], 
+  jobDescription: string,
+  candidateData: CandidateData
+) {
+  if (!apiKey) {
+    console.error('OpenAI API key is missing');
+    throw new Error('OpenAI API key is not configured');
+  }
+
+  try {
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a skilled HR analyst evaluating job candidate matches.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        }
+      }
+    );
+
+    // Parse JSON response safely
+    const resultContent = response.data.choices[0].message.content;
+    return JSON.parse(resultContent);
+    
+  } catch (directApiError) {
+    console.error('OpenAI API call failed, using fallback:', directApiError);
+    return simulateMatching(jobRequirements, candidateData);
+  }
+}

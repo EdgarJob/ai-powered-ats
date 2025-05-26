@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "dev": "cd frontend && npm run dev"
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "@types/react": "^19.1.5",
+    "@types/react-dom": "^19.1.5",
+    "dotenv": "^16.5.0",
+    "firebase-admin": "^13.4.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "typescript": "^5.8.3"
+  }
+}
