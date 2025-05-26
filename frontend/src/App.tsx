@@ -151,38 +151,7 @@ function HomePage() {
     );
 }
 
-function DashboardPage() {
-    return (
-        <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
-            <div className="card">
-                <p className="text-gray-600">Dashboard content coming soon...</p>
-            </div>
-        </div>
-    );
-}
 
-function JobsPage() {
-    return (
-        <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Job Openings</h2>
-            <div className="card">
-                <p className="text-gray-600">Job management features coming soon...</p>
-            </div>
-        </div>
-    );
-}
-
-function CandidatesPage() {
-    return (
-        <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Candidates</h2>
-            <div className="card">
-                <p className="text-gray-600">Candidate management features coming soon...</p>
-            </div>
-        </div>
-    );
-}
 
 function LoginPage() {
     const [email, setEmail] = React.useState('');

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
     Box,
     Typography,
@@ -8,7 +8,6 @@ import {
     Button,
     Alert,
     CircularProgress,
-    Grid,
     Chip,
     Avatar,
     TextField,
@@ -18,7 +17,7 @@ import {
     MenuItem,
     Snackbar
 } from '@mui/material';
-import { Person, Email, Phone, LocationOn, Work, School } from '@mui/icons-material';
+import { Email, Phone, LocationOn, Work, School } from '@mui/icons-material';
 import { getCandidates, type Candidate } from '../lib/candidate-service';
 
 export function CandidatesList() {
@@ -26,10 +25,9 @@ export function CandidatesList() {
     const [skillFilter, setSkillFilter] = useState('');
     const [locationFilter, setLocationFilter] = useState('');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' as 'success' | 'error' | 'info' });
-    const queryClient = useQueryClient();
 
     // Fetch candidates using React Query
-    const { data: candidates = [], isLoading, error, refetch } = useQuery({
+    const { data: candidates = [], isLoading, error } = useQuery({
         queryKey: ['candidates'],
         queryFn: () => getCandidates(),
         staleTime: 5 * 60 * 1000, // 5 minutes

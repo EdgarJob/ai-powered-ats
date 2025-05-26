@@ -9,10 +9,7 @@ import {
     CircularProgress,
     Alert,
     Divider,
-    Chip,
-    Stack,
-    Button,
-    Icon
+    Button
 } from '@mui/material';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase'; // Import Firebase config
