@@ -92,7 +92,9 @@ jobs:
       
       - name: Check deployment secrets
         run: |
+          echo "🔍 Checking Firebase deployment secrets..."
           if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
+            echo "❌ FIREBASE_SERVICE_ACCOUNT secret is missing"
             echo "⚠️ Firebase deployment secrets not configured. Skipping deployment."
             echo "To enable deployment, configure the following secrets in GitHub repository settings:"
             echo "- FIREBASE_API_KEY"
@@ -105,6 +107,22 @@ jobs:
             echo "- OPENAI_API_KEY"
             exit 0
           fi
+          echo "✅ FIREBASE_SERVICE_ACCOUNT secret is configured"
+          
+          # Check other required secrets
+          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            echo "❌ FIREBASE_PROJECT_ID secret is missing"
+            exit 1
+          fi
+          echo "✅ FIREBASE_PROJECT_ID secret is configured"
+          
+          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
+            echo "❌ FIREBASE_API_KEY secret is missing"
+            exit 1
+          fi
+          echo "✅ FIREBASE_API_KEY secret is configured"
+          
+          echo "🎉 All required secrets are configured!"
       
       - name: Install dependencies
         run: |
@@ -125,9 +143,18 @@ jobs:
           VITE_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       
       - name: Deploy to Firebase
+        run: |
+          echo "🚀 Starting Firebase deployment..."
+          echo "Project ID: ${{ secrets.FIREBASE_PROJECT_ID }}"
+          echo "Working directory: $(pwd)"
+          echo "Build directory contents:"
+          ls -la frontend/dist/ || echo "❌ Build directory not found"
+        
+      - name: Firebase Hosting Deploy
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          channelId: live 
+          channelId: live
+          entryPoint: ./ 
