@@ -85,7 +85,7 @@ export async function getJobs(options: {
   createdBy?: string;
 } = {}): Promise<Job[]> {
   try {
-    let jobsQuery = collection(db, 'jobs');
+    const jobsQuery = collection(db, 'jobs');
     const constraints = [];
     
     if (options.status) {

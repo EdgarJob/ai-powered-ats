@@ -116,7 +116,7 @@ export async function getCandidates(options: {
   limit?: number;
 } = {}): Promise<Candidate[]> {
   try {
-    let candidatesQuery = collection(db, 'candidates');
+    const candidatesQuery = collection(db, 'candidates');
     const constraints = [];
     
     if (options.userId) {
