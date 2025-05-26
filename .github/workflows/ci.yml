@@ -192,26 +192,10 @@ jobs:
           echo "Build directory contents:"
           ls -la frontend/dist/ || echo "❌ Build directory not found"
         
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-        
       - name: Deploy to Firebase Hosting
-        run: |
-          echo "🚀 Deploying to Firebase Hosting..."
-          echo "📁 Current directory: $(pwd)"
-          echo "📂 Build directory check:"
-          ls -la frontend/dist/ || echo "❌ Build directory not found"
-          
-          # Create service account file
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > firebase-service-account.json
-          
-          # Authenticate with Firebase
-          export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/firebase-service-account.json"
-          
-          # Deploy to Firebase
-          firebase deploy --only hosting --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive --debug
-          
-          # Clean up
-          rm firebase-service-account.json
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }} 
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          channelId: live 
