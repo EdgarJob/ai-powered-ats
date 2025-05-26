@@ -31,7 +31,7 @@ export function CandidatesList() {
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' as 'success' | 'error' | 'info' });
 
     // Fetch candidates using React Query
-    const { data: candidates = [], isLoading, error, refetch } = useQuery({
+    const { data: candidates = [], isLoading, error } = useQuery({
         queryKey: ['candidates', searchTerm, skillFilter, locationFilter, professionFilter, experienceFilter],
         queryFn: () => getCandidates(),
         staleTime: 5 * 60 * 1000, // 5 minutes

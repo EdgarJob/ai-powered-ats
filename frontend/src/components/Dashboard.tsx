@@ -18,7 +18,6 @@ import {
     ListItemText,
     ListItemIcon,
     Avatar,
-    Tooltip,
     Container
 } from '@mui/material';
 import {
@@ -34,11 +33,9 @@ import {
     Cell,
     LineChart,
     Line,
-    FunnelChart,
-    Funnel,
     LabelList
 } from 'recharts';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import WorkIcon from '@mui/icons-material/Work';
@@ -53,9 +50,27 @@ import PendingIcon from '@mui/icons-material/Pending';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { getCandidates } from '../lib/candidate-service';
 import { getJobs } from '../lib/job-service';
-import { JOB_CATEGORIES, getCategoryById } from '../lib/categories';
+import { getCategoryById } from '../lib/categories';
 
 // Enhanced types for comprehensive dashboard stats
+interface RecentCandidate {
+    id: string;
+    firstName: string;
+    lastName: string;
+    currentPosition?: string;
+    location?: string;
+    createdAt: Date;
+}
+
+interface RecentJob {
+    id: string;
+    title: string;
+    company: string;
+    location: string;
+    status: string;
+    createdAt: Date;
+}
+
 interface DashboardStats {
     totalUsers: number;
     totalCandidates: number;
@@ -63,8 +78,8 @@ interface DashboardStats {
     publishedJobs: number;
     draftJobs: number;
     closedJobs: number;
-    recentCandidates: any[];
-    recentJobs: any[];
+    recentCandidates: RecentCandidate[];
+    recentJobs: RecentJob[];
     topSkills: { skill: string; count: number }[];
     topLocations: { location: string; count: number }[];
     experienceLevels: { level: string; count: number }[];
