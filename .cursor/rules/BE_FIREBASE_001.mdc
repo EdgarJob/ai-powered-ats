@@ -1,5 +1,60 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
+# Firebase Service Layer Pattern
+
+**Goal for AI:** Always use the established service layer pattern for Firebase operations with proper error handling and TypeScript interfaces.
+
+**Constraint/Guideline:**
+- Import Firebase services from the centralized firebase.ts config file
+- Use async/await for all Firebase operations
+- Implement proper error handling with try-catch blocks
+- Define TypeScript interfaces for all data models
+- Use Firestore Timestamp conversion for date fields
+- Follow the established CRUD operation patterns
+
+**Example (Good):**
+```typescript
+import { collection, addDoc, getDoc, doc, Timestamp } from 'firebase/firestore';
+import { db } from './firebase';
+
+export interface Candidate {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function createCandidate(
+  candidateData: Omit<Candidate, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Candidate> {
+  try {
+    const newCandidate = {
+      ...candidateData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const docRef = await addDoc(collection(db, 'candidates'), newCandidate);
+    
+    return {
+      id: docRef.id,
+      ...newCandidate
+    };
+  } catch (error) {
+    console.error('Error creating candidate:', error);
+    throw error;
+  }
+}
+```
+
+**Example (Bad):**
+```typescript
+// Avoid direct Firebase imports without the service layer
+import { initializeApp } from 'firebase/app';
+// Missing error handling and type safety
+```

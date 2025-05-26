@@ -1,5 +1,52 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
+# TypeScript Data Model Definition Pattern
+
+**Goal for AI:** Define consistent TypeScript interfaces for all data models with proper field types and documentation.
+
+**Constraint/Guideline:**
+- Define interfaces for all data entities (User, Candidate, Job, Application)
+- Use consistent field naming conventions (camelCase)
+- Include id, createdAt, and updatedAt fields for all entities
+- Use optional fields (?) for non-required properties
+- Export interfaces from service files where they're used
+- Use Date type for timestamp fields in interfaces
+
+**Example (Good):**
+```typescript
+export interface Candidate {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  location?: string;
+  currentPosition?: string;
+  yearsOfExperience?: number;
+  education?: {
+    degree: string;
+    institution: string;
+    year: number;
+  }[];
+  skills: string[];
+  resumeUrl?: string;
+  metadata?: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+  userId?: string;
+}
+
+export interface JobApplication {
+  id: string;
+  candidateId: string;
+  jobId: string;
+  status: 'applied' | 'review' | 'interview' | 'offer' | 'rejected' | 'accepted';
+  matchScore?: number;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```

@@ -1,5 +1,52 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
+# React Functional Components with TypeScript
+
+**Goal for AI:** Always create React components as functional components with proper TypeScript interfaces and hooks.
+
+**Constraint/Guideline:**
+- Use functional components with React.FC type or explicit return types
+- Define proper TypeScript interfaces for props
+- Use React hooks (useState, useEffect) for state management
+- Import React explicitly at the top of each component file
+- Use PascalCase for component names and file names
+
+**Example (Good):**
+```tsx
+import React, { useState, useEffect } from 'react';
+
+interface LoginPageProps {
+  onLogin?: (user: User) => void;
+}
+
+function LoginPage({ onLogin }: LoginPageProps) {
+  const [email, setEmail] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Implementation
+  };
+
+  return (
+    <div className="max-w-md mx-auto">
+      {/* Component JSX */}
+    </div>
+  );
+}
+
+export default LoginPage;
+```
+
+**Example (Bad):**
+```tsx
+// Avoid class components
+class LoginPage extends React.Component {
+  render() {
+    return <div>Login</div>;
+  }
+}
+```
