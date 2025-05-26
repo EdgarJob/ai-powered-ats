@@ -169,19 +169,26 @@ VITE_OPENAI_API_KEY=your_openai_api_key
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📚 Learning Resources
+## 📖 Documentation
 
-### **React & TypeScript**
+### **Project Documentation**
+- **[📋 Complete Features List](docs/FEATURES.md)** - Comprehensive documentation of all features
+- **[🚀 Deployment Guide](docs/DEPLOYMENT.md)** - Step-by-step deployment instructions
+- **[🔒 Security Guidelines](docs/SECURITY.md)** - Security best practices and configurations
+
+### **Learning Resources**
+
+#### **React & TypeScript**
 - [React Official Tutorial](https://react.dev/learn)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [React + TypeScript Cheatsheet](https://react-typescript-cheatsheet.netlify.app/)
 
-### **Firebase**
+#### **Firebase**
 - [Firebase Documentation](https://firebase.google.com/docs)
 - [Firestore Getting Started](https://firebase.google.com/docs/firestore/quickstart)
 - [Firebase Authentication](https://firebase.google.com/docs/auth)
 
-### **AI Integration**
+#### **AI Integration**
 - [OpenAI API Documentation](https://platform.openai.com/docs)
 - [AI for Developers Guide](https://openai.com/blog/openai-api)
 
