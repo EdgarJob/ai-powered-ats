@@ -18,7 +18,8 @@ import {
     ListItemText,
     ListItemIcon,
     Avatar,
-    Tooltip
+    Tooltip,
+    Container
 } from '@mui/material';
 import {
     BarChart,
@@ -49,6 +50,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { getCandidates } from '../lib/candidate-service';
 import { getJobs } from '../lib/job-service';
 import { JOB_CATEGORIES, getCategoryById } from '../lib/categories';
@@ -217,7 +219,7 @@ export function Dashboard() {
         fetchDashboardStats();
     }, []);
 
-    // Enhanced stat card component
+    // Enhanced stat card component with better styling
     const StatCard = ({
         title,
         value,
@@ -234,17 +236,28 @@ export function Dashboard() {
         growth?: number;
     }) => (
         <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
-                <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <Avatar sx={{ bgcolor: color, mr: 2 }}>
+            <Card
+                sx={{
+                    height: '160px',
+                    position: 'relative',
+                    overflow: 'visible',
+                    transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                    '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: '0 8px 25px rgba(0,0,0,0.15)'
+                    }
+                }}
+            >
+                <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                        <Avatar sx={{ bgcolor: color, mr: 2, width: 48, height: 48 }}>
                             {icon}
                         </Avatar>
-                        <Box>
-                            <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                        <Box sx={{ flex: 1 }}>
+                            <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', mb: 0.5 }}>
                                 {value}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
                                 {title}
                             </Typography>
                         </Box>
@@ -257,7 +270,7 @@ export function Dashboard() {
                     {growth && (
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <TrendingUpIcon sx={{ fontSize: 16, color: 'success.main', mr: 0.5 }} />
-                            <Typography variant="body2" color="success.main">
+                            <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
                                 +{growth}% this month
                             </Typography>
                         </Box>
@@ -267,14 +280,14 @@ export function Dashboard() {
         </Grid>
     );
 
-    // Progress bar component for analytics
+    // Progress bar component for analytics with improved styling
     const ProgressBar = ({ label, value, total, color }: { label: string; value: number; total: number; color: string }) => {
         const percentage = total > 0 ? (value / total) * 100 : 0;
         return (
-            <Box sx={{ mb: 2 }}>
+            <Box sx={{ mb: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2">{label}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body1" sx={{ fontWeight: 500 }}>{label}</Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
                         {value} ({percentage.toFixed(1)}%)
                     </Typography>
                 </Box>
@@ -282,12 +295,12 @@ export function Dashboard() {
                     variant="determinate"
                     value={percentage}
                     sx={{
-                        height: 8,
-                        borderRadius: 4,
+                        height: 10,
+                        borderRadius: 5,
                         backgroundColor: 'grey.200',
                         '& .MuiLinearProgress-bar': {
                             backgroundColor: color,
-                            borderRadius: 4,
+                            borderRadius: 5,
                         }
                     }}
                 />
@@ -295,29 +308,55 @@ export function Dashboard() {
         );
     };
 
+    // Section header component for better organization
+    const SectionHeader = ({ title, icon, subtitle }: { title: string; icon: React.ReactNode; subtitle?: string }) => (
+        <Box sx={{ mb: 4, mt: 6 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                {icon}
+                <Typography variant="h4" sx={{ ml: 1, fontWeight: 'bold' }}>
+                    {title}
+                </Typography>
+            </Box>
+            {subtitle && (
+                <Typography variant="body1" color="text.secondary">
+                    {subtitle}
+                </Typography>
+            )}
+            <Divider sx={{ mt: 2 }} />
+        </Box>
+    );
+
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Loading Dashboard Analytics...</Typography>
-            </Box>
+            <Container maxWidth="xl">
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+                    <CircularProgress size={60} />
+                    <Typography sx={{ ml: 3, fontSize: '1.2rem' }}>Loading Dashboard Analytics...</Typography>
+                </Box>
+            </Container>
         );
     }
 
     return (
-        <Box sx={{ width: '100%', py: 3 }}>
-            <Typography variant="h4" sx={{ mb: 3 }}>
-                📊 Admin Dashboard
-            </Typography>
+        <Container maxWidth="xl" sx={{ py: 4 }}>
+            {/* Main Header */}
+            <Box sx={{ mb: 5 }}>
+                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    📊 Admin Dashboard
+                </Typography>
+                <Typography variant="h6" color="text.secondary">
+                    Comprehensive overview of your recruitment system
+                </Typography>
+            </Box>
 
             {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
+                <Alert severity="error" sx={{ mb: 4 }}>
                     {error}
                 </Alert>
             )}
 
             {/* Main Stats Cards */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid container spacing={3} sx={{ mb: 6 }}>
                 <StatCard
                     title="Total Candidates"
                     value={stats.totalCandidates}
@@ -350,13 +389,19 @@ export function Dashboard() {
                 />
             </Grid>
 
-            {/* Analytics Section */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            {/* Basic Analytics Section */}
+            <SectionHeader
+                title="Basic Analytics"
+                icon={<AnalyticsIcon sx={{ fontSize: 32, color: 'primary.main' }} />}
+                subtitle="Overview of job statuses and candidate distribution"
+            />
+
+            <Grid container spacing={4} sx={{ mb: 6 }}>
                 {/* Job Status Breakdown */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '400px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <WorkIcon sx={{ mr: 1 }} />
                                 Job Status Breakdown
                             </Typography>
@@ -384,9 +429,9 @@ export function Dashboard() {
 
                 {/* Experience Level Distribution */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '400px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <TrendingUpIcon sx={{ mr: 1 }} />
                                 Candidate Experience Levels
                             </Typography>
@@ -404,24 +449,28 @@ export function Dashboard() {
                 </Grid>
             </Grid>
 
-            {/* Top Skills and Locations */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            {/* Skills and Locations Section */}
+            <Grid container spacing={4} sx={{ mb: 6 }}>
                 {/* Top Skills */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '350px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <SchoolIcon sx={{ mr: 1 }} />
                                 Most In-Demand Skills
                             </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                                 {stats.topSkills.slice(0, 12).map((skill, index) => (
                                     <Chip
                                         key={skill.skill}
                                         label={`${skill.skill} (${skill.count})`}
-                                        variant="outlined"
-                                        size="small"
+                                        variant={index < 3 ? 'filled' : 'outlined'}
+                                        size="medium"
                                         color={index < 3 ? 'primary' : 'default'}
+                                        sx={{
+                                            fontWeight: index < 3 ? 'bold' : 'normal',
+                                            fontSize: '0.9rem'
+                                        }}
                                     />
                                 ))}
                             </Box>
@@ -431,44 +480,48 @@ export function Dashboard() {
 
                 {/* Top Locations */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '350px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <LocationOnIcon sx={{ mr: 1 }} />
                                 Candidate Locations
                             </Typography>
-                            {stats.topLocations.slice(0, 6).map((location) => (
-                                <ProgressBar
-                                    key={location.location}
-                                    label={location.location}
-                                    value={location.count}
-                                    total={stats.totalCandidates}
-                                    color="#2196f3"
-                                />
-                            ))}
+                            <Box sx={{ maxHeight: '250px', overflowY: 'auto' }}>
+                                {stats.topLocations.slice(0, 6).map((location) => (
+                                    <ProgressBar
+                                        key={location.location}
+                                        label={location.location}
+                                        value={location.count}
+                                        total={stats.totalCandidates}
+                                        color="#2196f3"
+                                    />
+                                ))}
+                            </Box>
                         </CardContent>
                     </Card>
                 </Grid>
             </Grid>
 
             {/* Advanced Analytics Section */}
-            <Typography variant="h5" sx={{ mb: 3, mt: 4 }}>
-                🤖 AI-Powered Analytics
-            </Typography>
+            <SectionHeader
+                title="AI-Powered Analytics"
+                icon={<span style={{ fontSize: '32px' }}>🤖</span>}
+                subtitle="Advanced insights powered by artificial intelligence"
+            />
 
             {/* Skill Gap Analysis & Job Performance */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid container spacing={4} sx={{ mb: 6 }}>
                 {/* Skill Gap Analysis */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '450px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <SchoolIcon sx={{ mr: 1 }} />
                                 Skill Gap Analysis
                             </Typography>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={stats.topSkills.map(skill => ({
-                                    skill: skill.skill,
+                            <ResponsiveContainer width="100%" height={350}>
+                                <BarChart data={stats.topSkills.slice(0, 6).map(skill => ({
+                                    skill: skill.skill.length > 8 ? skill.skill.substring(0, 8) + '...' : skill.skill,
                                     demand: Math.floor(Math.random() * 20) + 5,
                                     supply: skill.count,
                                     gap: Math.max(0, Math.floor(Math.random() * 20) + 5 - skill.count)
@@ -488,15 +541,15 @@ export function Dashboard() {
 
                 {/* Job Performance Metrics */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '450px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <TrendingUpIcon sx={{ mr: 1 }} />
                                 Job Performance Metrics
                             </Typography>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <LineChart data={stats.jobCategories.map(category => ({
-                                    category: category.category,
+                            <ResponsiveContainer width="100%" height={350}>
+                                <LineChart data={stats.jobCategories.slice(0, 5).map(category => ({
+                                    category: category.category.length > 10 ? category.category.substring(0, 10) + '...' : category.category,
                                     jobs: category.count,
                                     avgApplications: Math.floor(Math.random() * 50) + 10,
                                     successRate: Math.floor(Math.random() * 40) + 60
@@ -505,8 +558,8 @@ export function Dashboard() {
                                     <XAxis dataKey="category" />
                                     <YAxis />
                                     <RechartsTooltip />
-                                    <Line type="monotone" dataKey="avgApplications" stroke="#2196f3" name="Avg Applications" />
-                                    <Line type="monotone" dataKey="successRate" stroke="#4caf50" name="Success Rate %" />
+                                    <Line type="monotone" dataKey="avgApplications" stroke="#2196f3" name="Avg Applications" strokeWidth={3} />
+                                    <Line type="monotone" dataKey="successRate" stroke="#4caf50" name="Success Rate %" strokeWidth={3} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -515,28 +568,28 @@ export function Dashboard() {
             </Grid>
 
             {/* Geographic Talent Map & Hiring Pipeline */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid container spacing={4} sx={{ mb: 6 }}>
                 {/* Geographic Distribution */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '450px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <LocationOnIcon sx={{ mr: 1 }} />
                                 Geographic Talent Distribution
                             </Typography>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={350}>
                                 <PieChart>
                                     <Pie
-                                        data={stats.topLocations}
+                                        data={stats.topLocations.slice(0, 6)}
                                         dataKey="count"
                                         nameKey="location"
                                         cx="50%"
                                         cy="50%"
-                                        outerRadius={80}
+                                        outerRadius={100}
                                         fill="#8884d8"
                                         label={({ location, count }) => `${location}: ${count}`}
                                     >
-                                        {stats.topLocations.map((entry, index) => (
+                                        {stats.topLocations.slice(0, 6).map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'][index % 6]} />
                                         ))}
                                     </Pie>
@@ -549,13 +602,13 @@ export function Dashboard() {
 
                 {/* Hiring Pipeline Funnel */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '450px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <BusinessIcon sx={{ mr: 1 }} />
                                 Hiring Pipeline Funnel
                             </Typography>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={350}>
                                 <BarChart data={[
                                     { stage: 'Job Posted', count: stats.totalJobs, percentage: 100 },
                                     { stage: 'Applications', count: Math.floor(stats.totalJobs * 0.8), percentage: 80 },
@@ -579,39 +632,44 @@ export function Dashboard() {
             </Grid>
 
             {/* AI Recommendations Panel */}
-            <Card sx={{ mb: 4, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-                <CardContent>
-                    <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <Card sx={{
+                mb: 6,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                minHeight: '200px'
+            }}>
+                <CardContent sx={{ p: 4 }}>
+                    <Typography variant="h5" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                         🧠 Smart AI Recommendations
                     </Typography>
-                    <Grid container spacing={2}>
+                    <Grid container spacing={3}>
                         <Grid item xs={12} md={4}>
-                            <Paper sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.1)', color: 'white' }}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.15)', color: 'white', height: '120px' }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
                                     🎯 Skill Focus
                                 </Typography>
-                                <Typography variant="body2">
+                                <Typography variant="body1">
                                     High demand for JavaScript and Python skills. Consider targeted recruitment campaigns.
                                 </Typography>
                             </Paper>
                         </Grid>
                         <Grid item xs={12} md={4}>
-                            <Paper sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.1)', color: 'white' }}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.15)', color: 'white', height: '120px' }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
                                     📍 Geographic Opportunity
                                 </Typography>
-                                <Typography variant="body2">
-                                    {stats.topLocations[0]?.location} has the highest candidate density. Focus job postings there.
+                                <Typography variant="body1">
+                                    {stats.topLocations[0]?.location || 'Various locations'} has the highest candidate density. Focus job postings there.
                                 </Typography>
                             </Paper>
                         </Grid>
                         <Grid item xs={12} md={4}>
-                            <Paper sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.1)', color: 'white' }}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.15)', color: 'white', height: '120px' }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
                                     ⚡ Optimization Tip
                                 </Typography>
-                                <Typography variant="body2">
-                                    {stats.experienceLevels[0]?.level} candidates are most common. Adjust job requirements accordingly.
+                                <Typography variant="body1">
+                                    {stats.experienceLevels[0]?.level || 'Entry level'} candidates are most common. Adjust job requirements accordingly.
                                 </Typography>
                             </Paper>
                         </Grid>
@@ -619,26 +677,36 @@ export function Dashboard() {
                 </CardContent>
             </Card>
 
-            {/* Recent Activity */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            {/* Recent Activity Section */}
+            <SectionHeader
+                title="Recent Activity"
+                icon={<AccessTimeIcon sx={{ fontSize: 32, color: 'primary.main' }} />}
+                subtitle="Latest candidates and job postings"
+            />
+
+            <Grid container spacing={4} sx={{ mb: 6 }}>
                 {/* Recent Candidates */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '400px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <AccessTimeIcon sx={{ mr: 1 }} />
                                 Recent Candidates
                             </Typography>
-                            <List dense>
+                            <List dense sx={{ maxHeight: '300px', overflowY: 'auto' }}>
                                 {stats.recentCandidates.map((candidate) => (
-                                    <ListItem key={candidate.id} sx={{ px: 0 }}>
+                                    <ListItem key={candidate.id} sx={{ px: 0, py: 1 }}>
                                         <ListItemIcon>
-                                            <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                                            <Avatar sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}>
                                                 {candidate.firstName.charAt(0)}{candidate.lastName.charAt(0)}
                                             </Avatar>
                                         </ListItemIcon>
                                         <ListItemText
-                                            primary={`${candidate.firstName} ${candidate.lastName}`}
+                                            primary={
+                                                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                                    {candidate.firstName} {candidate.lastName}
+                                                </Typography>
+                                            }
                                             secondary={`${candidate.currentPosition || 'Position not specified'} • ${candidate.location || 'Location not specified'}`}
                                         />
                                     </ListItem>
@@ -650,23 +718,27 @@ export function Dashboard() {
 
                 {/* Recent Jobs */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                    <Card sx={{ height: '400px' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
                                 <AccessTimeIcon sx={{ mr: 1 }} />
                                 Recent Job Postings
                             </Typography>
-                            <List dense>
+                            <List dense sx={{ maxHeight: '300px', overflowY: 'auto' }}>
                                 {stats.recentJobs.map((job) => (
-                                    <ListItem key={job.id} sx={{ px: 0 }}>
+                                    <ListItem key={job.id} sx={{ px: 0, py: 1 }}>
                                         <ListItemIcon>
                                             {job.status === 'published' ?
-                                                <CheckCircleIcon color="success" /> :
-                                                <PendingIcon color="warning" />
+                                                <CheckCircleIcon color="success" sx={{ fontSize: 28 }} /> :
+                                                <PendingIcon color="warning" sx={{ fontSize: 28 }} />
                                             }
                                         </ListItemIcon>
                                         <ListItemText
-                                            primary={job.title}
+                                            primary={
+                                                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                                    {job.title}
+                                                </Typography>
+                                            }
                                             secondary={`${job.company} • ${job.location} • ${job.status}`}
                                         />
                                     </ListItem>
@@ -678,16 +750,18 @@ export function Dashboard() {
             </Grid>
 
             {/* Quick Actions */}
-            <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
+            <Paper sx={{ p: 4, background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
+                <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
                     🚀 Quick Actions
                 </Typography>
-                <Grid container spacing={2}>
+                <Grid container spacing={3}>
                     <Grid item>
                         <Button
                             variant="contained"
                             color="primary"
+                            size="large"
                             onClick={() => navigate('/admin/jobs')}
+                            sx={{ px: 4, py: 1.5 }}
                         >
                             Manage Jobs
                         </Button>
@@ -696,18 +770,26 @@ export function Dashboard() {
                         <Button
                             variant="contained"
                             color="secondary"
+                            size="large"
                             onClick={() => navigate('/admin/candidates')}
+                            sx={{ px: 4, py: 1.5 }}
                         >
                             View Candidates
                         </Button>
                     </Grid>
                     <Grid item>
-                        <Button variant="outlined" onClick={fetchDashboardStats} disabled={loading}>
+                        <Button
+                            variant="outlined"
+                            size="large"
+                            onClick={fetchDashboardStats}
+                            disabled={loading}
+                            sx={{ px: 4, py: 1.5 }}
+                        >
                             Refresh Data
                         </Button>
                     </Grid>
                 </Grid>
             </Paper>
-        </Box>
+        </Container>
     );
 } 
