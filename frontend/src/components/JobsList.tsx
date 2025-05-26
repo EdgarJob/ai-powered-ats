@@ -109,6 +109,7 @@ export function JobsList() {
     const fetchJobs = async () => {
         setManualLoading(true);
         try {
+            // Use Firebase filtering when indexes are available
             let result;
             if (statusFilter === 'all') {
                 result = await getJobs();
@@ -376,6 +377,11 @@ export function JobsList() {
                     Sort by Date{getSortIndicator('createdAt')}
                 </Button>
             </Box>
+
+            {/* Results Summary */}
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Showing {jobs ? jobs.length : 0} job{jobs && jobs.length !== 1 ? 's' : ''}
+            </Typography>
 
             {isLoading || manualLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>

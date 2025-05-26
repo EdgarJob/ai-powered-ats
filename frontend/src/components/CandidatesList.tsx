@@ -15,7 +15,8 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    Snackbar
+    Snackbar,
+    Autocomplete
 } from '@mui/material';
 import { Email, Phone, LocationOn, Work, School } from '@mui/icons-material';
 import { getCandidates, type Candidate } from '../lib/candidate-service';
@@ -23,7 +24,7 @@ import { JOB_CATEGORIES, getCategoryById } from '../lib/categories';
 
 export function CandidatesList() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [skillFilter, setSkillFilter] = useState('');
+    const [skillFilter, setSkillFilter] = useState<string[]>([]);
     const [locationFilter, setLocationFilter] = useState('');
     const [professionFilter, setProfessionFilter] = useState('');
     const [experienceFilter, setExperienceFilter] = useState('');
@@ -120,8 +121,10 @@ export function CandidatesList() {
             candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
             candidate.currentPosition?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        const matchesSkill = skillFilter === '' ||
-            candidate.skills.some(skill => skill.toLowerCase().includes(skillFilter.toLowerCase()));
+        const matchesSkill = skillFilter.length === 0 ||
+            skillFilter.some(filterSkill =>
+                candidate.skills.some(skill => skill.toLowerCase().includes(filterSkill.toLowerCase()))
+            );
 
         const matchesLocation = locationFilter === '' ||
             candidate.location?.toLowerCase().includes(locationFilter.toLowerCase());
@@ -138,8 +141,8 @@ export function CandidatesList() {
         return matchesSearch && matchesSkill && matchesLocation && matchesProfession && matchesExperience;
     });
 
-    // Get unique skills for filter dropdown
-    const allSkills = Array.from(new Set(displayCandidates.flatMap(c => c.skills)));
+    // Get unique skills for filter dropdown (sorted alphabetically)
+    const allSkills = Array.from(new Set(displayCandidates.flatMap(c => c.skills))).sort();
     const allLocations = Array.from(new Set(displayCandidates.map(c => c.location).filter(Boolean)));
 
     const handleViewProfile = (candidate: Candidate) => {
@@ -239,19 +242,33 @@ export function CandidatesList() {
                         <MenuItem value="10+">10+ years</MenuItem>
                     </Select>
                 </FormControl>
-                <FormControl variant="outlined" sx={{ minWidth: 200 }}>
-                    <InputLabel>Filter by Skill</InputLabel>
-                    <Select
-                        value={skillFilter}
-                        onChange={(e) => setSkillFilter(e.target.value)}
-                        label="Filter by Skill"
-                    >
-                        <MenuItem value="">All Skills</MenuItem>
-                        {allSkills.map(skill => (
-                            <MenuItem key={skill} value={skill}>{skill}</MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                <Autocomplete
+                    multiple
+                    options={allSkills}
+                    value={skillFilter}
+                    onChange={(event, newValue) => setSkillFilter(newValue)}
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="Filter by Skills"
+                            placeholder="Type to search skills..."
+                            variant="outlined"
+                        />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                            <Chip
+                                variant="outlined"
+                                label={option}
+                                {...getTagProps({ index })}
+                                key={option}
+                            />
+                        ))
+                    }
+                    sx={{ minWidth: 300 }}
+                    filterSelectedOptions
+                    freeSolo={false}
+                />
                 <FormControl variant="outlined" sx={{ minWidth: 200 }}>
                     <InputLabel>Filter by Location</InputLabel>
                     <Select
