@@ -1,0 +1,13 @@
+{
+    "name": "ats-scripts",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Scripts for AI-Powered ATS",
+    "scripts": {
+        "populate-data": "node populate-sample-data.js"
+    },
+    "dependencies": {
+        "firebase": "^11.8.1",
+        "dotenv": "^16.5.0"
+    }
+}
