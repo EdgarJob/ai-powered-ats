@@ -20,17 +20,20 @@ import {
 } from '@mui/material';
 import { Person, Email, Phone, LocationOn, Work, School } from '@mui/icons-material';
 import { getCandidates, type Candidate } from '../lib/candidate-service';
+import { JOB_CATEGORIES, getCategoryById } from '../lib/categories';
 
 export function CandidatesList() {
     const [searchTerm, setSearchTerm] = useState('');
     const [skillFilter, setSkillFilter] = useState('');
     const [locationFilter, setLocationFilter] = useState('');
+    const [professionFilter, setProfessionFilter] = useState('');
+    const [experienceFilter, setExperienceFilter] = useState('');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' as 'success' | 'error' | 'info' });
     const queryClient = useQueryClient();
 
     // Fetch candidates using React Query
     const { data: candidates = [], isLoading, error, refetch } = useQuery({
-        queryKey: ['candidates'],
+        queryKey: ['candidates', searchTerm, skillFilter, locationFilter, professionFilter, experienceFilter],
         queryFn: () => getCandidates(),
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -46,6 +49,8 @@ export function CandidatesList() {
             location: 'San Francisco, CA',
             currentPosition: 'Senior Software Engineer',
             yearsOfExperience: 5,
+            profession: 'information-technology',
+            specialization: 'Software Development',
             skills: ['React', 'TypeScript', 'Node.js', 'Python', 'AWS'],
             education: [
                 {
@@ -67,6 +72,8 @@ export function CandidatesList() {
             location: 'Seattle, WA',
             currentPosition: 'Product Manager',
             yearsOfExperience: 7,
+            profession: 'information-technology',
+            specialization: 'Product Management',
             skills: ['Product Strategy', 'Agile', 'Data Analysis', 'User Research'],
             education: [
                 {
@@ -88,6 +95,8 @@ export function CandidatesList() {
             location: 'Austin, TX',
             currentPosition: 'UX Designer',
             yearsOfExperience: 4,
+            profession: 'creative-design',
+            specialization: 'UI/UX Design',
             skills: ['UI/UX Design', 'Figma', 'User Research', 'Prototyping'],
             education: [
                 {
@@ -119,7 +128,16 @@ export function CandidatesList() {
         const matchesLocation = locationFilter === '' ||
             candidate.location?.toLowerCase().includes(locationFilter.toLowerCase());
 
-        return matchesSearch && matchesSkill && matchesLocation;
+        const matchesProfession = professionFilter === '' ||
+            candidate.profession === professionFilter;
+
+        const matchesExperience = experienceFilter === '' ||
+            (experienceFilter === '0-2' && (candidate.yearsOfExperience || 0) <= 2) ||
+            (experienceFilter === '3-5' && (candidate.yearsOfExperience || 0) >= 3 && (candidate.yearsOfExperience || 0) <= 5) ||
+            (experienceFilter === '6-10' && (candidate.yearsOfExperience || 0) >= 6 && (candidate.yearsOfExperience || 0) <= 10) ||
+            (experienceFilter === '10+' && (candidate.yearsOfExperience || 0) > 10);
+
+        return matchesSearch && matchesSkill && matchesLocation && matchesProfession && matchesExperience;
     });
 
     // Get unique skills for filter dropdown
@@ -194,6 +212,35 @@ export function CandidatesList() {
                     placeholder="Name, email, or position..."
                     sx={{ minWidth: 250, flex: 1 }}
                 />
+                <FormControl variant="outlined" sx={{ minWidth: 200 }}>
+                    <InputLabel>Filter by Profession</InputLabel>
+                    <Select
+                        value={professionFilter}
+                        onChange={(e) => setProfessionFilter(e.target.value)}
+                        label="Filter by Profession"
+                    >
+                        <MenuItem value="">All Professions</MenuItem>
+                        {JOB_CATEGORIES.map(category => (
+                            <MenuItem key={category.id} value={category.id}>
+                                {category.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                <FormControl variant="outlined" sx={{ minWidth: 200 }}>
+                    <InputLabel>Filter by Experience</InputLabel>
+                    <Select
+                        value={experienceFilter}
+                        onChange={(e) => setExperienceFilter(e.target.value)}
+                        label="Filter by Experience"
+                    >
+                        <MenuItem value="">All Experience Levels</MenuItem>
+                        <MenuItem value="0-2">0-2 years</MenuItem>
+                        <MenuItem value="3-5">3-5 years</MenuItem>
+                        <MenuItem value="6-10">6-10 years</MenuItem>
+                        <MenuItem value="10+">10+ years</MenuItem>
+                    </Select>
+                </FormControl>
                 <FormControl variant="outlined" sx={{ minWidth: 200 }}>
                     <InputLabel>Filter by Skill</InputLabel>
                     <Select
@@ -277,6 +324,25 @@ export function CandidatesList() {
                                                 <Typography variant="body2">
                                                     {candidate.yearsOfExperience} years experience
                                                 </Typography>
+                                            </Box>
+                                        )}
+                                        {candidate.profession && (
+                                            <Box sx={{ mb: 1 }}>
+                                                <Chip
+                                                    label={getCategoryById(candidate.profession)?.name || candidate.profession}
+                                                    size="small"
+                                                    color="primary"
+                                                    variant="outlined"
+                                                />
+                                                {candidate.specialization && (
+                                                    <Chip
+                                                        label={candidate.specialization}
+                                                        size="small"
+                                                        color="secondary"
+                                                        variant="outlined"
+                                                        sx={{ ml: 1 }}
+                                                    />
+                                                )}
                                             </Box>
                                         )}
                                     </Box>
