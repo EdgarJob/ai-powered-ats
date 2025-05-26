@@ -93,34 +93,76 @@ jobs:
       - name: Check deployment secrets
         run: |
           echo "🔍 Checking Firebase deployment secrets..."
+          MISSING_SECRETS=""
+          
           if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
             echo "❌ FIREBASE_SERVICE_ACCOUNT secret is missing"
-            echo "⚠️ Firebase deployment secrets not configured. Skipping deployment."
-            echo "To enable deployment, configure the following secrets in GitHub repository settings:"
-            echo "- FIREBASE_API_KEY"
-            echo "- FIREBASE_AUTH_DOMAIN"
-            echo "- FIREBASE_PROJECT_ID"
-            echo "- FIREBASE_STORAGE_BUCKET"
-            echo "- FIREBASE_MESSAGING_SENDER_ID"
-            echo "- FIREBASE_APP_ID"
-            echo "- FIREBASE_SERVICE_ACCOUNT"
-            echo "- OPENAI_API_KEY"
-            exit 0
+            MISSING_SECRETS="$MISSING_SECRETS FIREBASE_SERVICE_ACCOUNT"
+          else
+            echo "✅ FIREBASE_SERVICE_ACCOUNT secret is configured"
           fi
-          echo "✅ FIREBASE_SERVICE_ACCOUNT secret is configured"
           
-          # Check other required secrets
           if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
             echo "❌ FIREBASE_PROJECT_ID secret is missing"
-            exit 1
+            MISSING_SECRETS="$MISSING_SECRETS FIREBASE_PROJECT_ID"
+          else
+            echo "✅ FIREBASE_PROJECT_ID secret is configured (value: ${{ secrets.FIREBASE_PROJECT_ID }})"
           fi
-          echo "✅ FIREBASE_PROJECT_ID secret is configured"
           
           if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
             echo "❌ FIREBASE_API_KEY secret is missing"
-            exit 1
+            MISSING_SECRETS="$MISSING_SECRETS FIREBASE_API_KEY"
+          else
+            echo "✅ FIREBASE_API_KEY secret is configured"
           fi
-          echo "✅ FIREBASE_API_KEY secret is configured"
+          
+          if [ -z "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
+            echo "❌ FIREBASE_AUTH_DOMAIN secret is missing"
+            MISSING_SECRETS="$MISSING_SECRETS FIREBASE_AUTH_DOMAIN"
+          else
+            echo "✅ FIREBASE_AUTH_DOMAIN secret is configured (value: ${{ secrets.FIREBASE_AUTH_DOMAIN }})"
+          fi
+          
+          if [ -z "${{ secrets.FIREBASE_STORAGE_BUCKET }}" ]; then
+            echo "❌ FIREBASE_STORAGE_BUCKET secret is missing"
+            MISSING_SECRETS="$MISSING_SECRETS FIREBASE_STORAGE_BUCKET"
+          else
+            echo "✅ FIREBASE_STORAGE_BUCKET secret is configured (value: ${{ secrets.FIREBASE_STORAGE_BUCKET }})"
+          fi
+          
+          if [ -z "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" ]; then
+            echo "❌ FIREBASE_MESSAGING_SENDER_ID secret is missing"
+            MISSING_SECRETS="$MISSING_SECRETS FIREBASE_MESSAGING_SENDER_ID"
+          else
+            echo "✅ FIREBASE_MESSAGING_SENDER_ID secret is configured"
+          fi
+          
+          if [ -z "${{ secrets.FIREBASE_APP_ID }}" ]; then
+            echo "❌ FIREBASE_APP_ID secret is missing"
+            MISSING_SECRETS="$MISSING_SECRETS FIREBASE_APP_ID"
+          else
+            echo "✅ FIREBASE_APP_ID secret is configured"
+          fi
+          
+          if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+            echo "❌ OPENAI_API_KEY secret is missing"
+            MISSING_SECRETS="$MISSING_SECRETS OPENAI_API_KEY"
+          else
+            echo "✅ OPENAI_API_KEY secret is configured"
+          fi
+          
+          if [ -n "$MISSING_SECRETS" ]; then
+            echo ""
+            echo "🚨 MISSING SECRETS:$MISSING_SECRETS"
+            echo ""
+            echo "⚠️ Firebase deployment secrets not configured. Skipping deployment."
+            echo "To enable deployment, configure the following secrets in GitHub repository settings:"
+            echo "Go to: https://github.com/EdgarJob/ai-powered-ats/settings/secrets/actions"
+            for secret in $MISSING_SECRETS; do
+              echo "- $secret"
+            done
+            exit 0
+          fi
           
           echo "🎉 All required secrets are configured!"
       
