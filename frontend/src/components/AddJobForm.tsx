@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { Add, Close } from '@mui/icons-material';
 import { createJob, type Job } from '../lib/job-service';
+import { JOB_CATEGORIES, getSubcategoriesByCategory } from '../lib/categories';
 
 interface AddJobFormProps {
     open: boolean;
@@ -32,6 +33,8 @@ export function AddJobForm({ open, onClose, onJobAdded }: AddJobFormProps) {
         location: '',
         description: '',
         employmentType: 'Full-time',
+        category: '',
+        subcategory: '',
         salaryMin: '',
         salaryMax: '',
         salaryCurrency: 'USD'
@@ -84,6 +87,8 @@ export function AddJobForm({ open, onClose, onJobAdded }: AddJobFormProps) {
                 location: formData.location,
                 description: formData.description,
                 employmentType: formData.employmentType as 'Full-time' | 'Part-time' | 'Contract' | 'Remote',
+                category: formData.category || undefined,
+                subcategory: formData.subcategory || undefined,
                 requirements,
                 responsibilities,
                 salary: formData.salaryMin || formData.salaryMax ? {
@@ -112,6 +117,8 @@ export function AddJobForm({ open, onClose, onJobAdded }: AddJobFormProps) {
             location: '',
             description: '',
             employmentType: 'Full-time',
+            category: '',
+            subcategory: '',
             salaryMin: '',
             salaryMax: '',
             salaryCurrency: 'USD'
@@ -182,6 +189,49 @@ export function AddJobForm({ open, onClose, onJobAdded }: AddJobFormProps) {
                                 <MenuItem value="Remote">Remote</MenuItem>
                             </Select>
                         </FormControl>
+
+                        {/* Job Category */}
+                        <FormControl fullWidth>
+                            <InputLabel>Job Category</InputLabel>
+                            <Select
+                                value={formData.category}
+                                onChange={(e) => {
+                                    handleInputChange('category', e.target.value);
+                                    handleInputChange('subcategory', ''); // Reset subcategory when category changes
+                                }}
+                                label="Job Category"
+                            >
+                                <MenuItem value="">
+                                    <em>Select a category</em>
+                                </MenuItem>
+                                {JOB_CATEGORIES.map((category) => (
+                                    <MenuItem key={category.id} value={category.id}>
+                                        {category.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        {/* Job Subcategory */}
+                        {formData.category && (
+                            <FormControl fullWidth>
+                                <InputLabel>Specialization</InputLabel>
+                                <Select
+                                    value={formData.subcategory}
+                                    onChange={(e) => handleInputChange('subcategory', e.target.value)}
+                                    label="Specialization"
+                                >
+                                    <MenuItem value="">
+                                        <em>Select a specialization</em>
+                                    </MenuItem>
+                                    {getSubcategoriesByCategory(formData.category).map((subcategory) => (
+                                        <MenuItem key={subcategory} value={subcategory}>
+                                            {subcategory}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        )}
 
                         <TextField
                             label="Job Description"

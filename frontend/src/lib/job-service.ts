@@ -1,12 +1,12 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
   orderBy,
   deleteDoc,
   Timestamp
@@ -28,6 +28,8 @@ export interface Job {
     currency?: string;
   };
   employmentType?: string;
+  category?: string; // Job category ID (e.g., 'information-technology')
+  subcategory?: string; // Specific subcategory (e.g., 'Software Development')
   metadata?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
@@ -42,9 +44,9 @@ export async function createJob(jobData: Omit<Job, 'id' | 'createdAt' | 'updated
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     const docRef = await addDoc(collection(db, 'jobs'), newJob);
-    
+
     return {
       id: docRef.id,
       ...newJob
@@ -60,7 +62,7 @@ export async function getJob(jobId: string): Promise<Job | null> {
   try {
     const docRef = doc(db, 'jobs', jobId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data();
       // Convert Firestore Timestamps to JavaScript Dates
@@ -71,7 +73,7 @@ export async function getJob(jobId: string): Promise<Job | null> {
         updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt
       } as Job;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error getting job:', error);
@@ -87,21 +89,21 @@ export async function getJobs(options: {
   try {
     const jobsQuery = collection(db, 'jobs');
     const constraints = [];
-    
+
     if (options.status) {
       constraints.push(where('status', '==', options.status));
     }
-    
+
     if (options.createdBy) {
       constraints.push(where('createdBy', '==', options.createdBy));
     }
-    
+
     // Always sort by creation date, descending
     constraints.push(orderBy('createdAt', 'desc'));
-    
+
     const q = query(jobsQuery, ...constraints);
     const querySnapshot = await getDocs(q);
-    
+
     const jobs: Job[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
@@ -112,7 +114,7 @@ export async function getJobs(options: {
         updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt
       } as Job);
     });
-    
+
     return jobs;
   } catch (error) {
     console.error('Error getting jobs:', error);
@@ -128,15 +130,15 @@ export async function updateJob(jobId: string, jobData: Partial<Omit<Job, 'id' |
       ...jobData,
       updatedAt: new Date()
     };
-    
+
     await updateDoc(jobRef, updateData);
-    
+
     // Get the updated job
     const updatedJob = await getJob(jobId);
     if (!updatedJob) {
       throw new Error(`Job with ID ${jobId} not found after update`);
     }
-    
+
     return updatedJob;
   } catch (error) {
     console.error('Error updating job:', error);

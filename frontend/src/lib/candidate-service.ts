@@ -25,6 +25,8 @@ export interface Candidate {
   location?: string;
   currentPosition?: string;
   yearsOfExperience?: number;
+  profession?: string; // Primary profession/category ID (e.g., 'information-technology')
+  specialization?: string; // Specific specialization (e.g., 'Software Development')
   education?: {
     degree: string;
     institution: string;

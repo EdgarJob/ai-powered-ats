@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Box, Typography, Chip, Button, Select, MenuItem, FormControl, InputLabel, Alert, TextField, Snackbar, CircularProgress } from '@mui/material';
+import { Box, Typography, Chip, Button, Select, MenuItem, FormControl, InputLabel, Alert, TextField, Snackbar, CircularProgress, Grid } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { AddJobForm } from './AddJobForm';
 import { getJobs, updateJob, deleteJob } from '../lib/job-service';
 import type { Job } from '../lib/job-service';
+import { JOB_CATEGORIES, DATE_RANGES, getDateRangeFilter, getCategoryById } from '../lib/categories';
 
 // Sorting options
 type SortField = 'createdAt' | 'title' | 'status';
@@ -19,6 +20,10 @@ const migrateResponsibilities = async (job: Job) => {
 export function JobsList() {
     const [showAddJob, setShowAddJob] = useState(false);
     const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'closed'>('all');
+    const [categoryFilter, setCategoryFilter] = useState<string>('all');
+    const [dateRangeFilter, setDateRangeFilter] = useState<string>('all');
+    const [customStartDate, setCustomStartDate] = useState<string>('');
+    const [customEndDate, setCustomEndDate] = useState<string>('');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [sortField, setSortField] = useState<SortField>('createdAt');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc'); // Default to newest first
@@ -111,8 +116,39 @@ export function JobsList() {
                 result = await getJobs({ status: statusFilter as 'draft' | 'published' | 'closed' });
             }
 
+            // Apply client-side filtering
+            let filteredJobs = result;
+
+            // Filter by category
+            if (categoryFilter !== 'all') {
+                filteredJobs = filteredJobs.filter(job => job.category === categoryFilter);
+            }
+
+            // Filter by date range
+            if (dateRangeFilter !== 'all') {
+                const dateFilter = getDateRangeFilter(
+                    dateRangeFilter,
+                    customStartDate ? new Date(customStartDate) : undefined,
+                    customEndDate ? new Date(customEndDate) : undefined
+                );
+
+                if (dateFilter.startDate || dateFilter.endDate) {
+                    filteredJobs = filteredJobs.filter(job => {
+                        const jobDate = job.createdAt instanceof Date ? job.createdAt : new Date(job.createdAt);
+
+                        if (dateFilter.startDate && jobDate < dateFilter.startDate) {
+                            return false;
+                        }
+                        if (dateFilter.endDate && jobDate > dateFilter.endDate) {
+                            return false;
+                        }
+                        return true;
+                    });
+                }
+            }
+
             // Sort the jobs
-            const sortedJobs = sortJobs(result);
+            const sortedJobs = sortJobs(filteredJobs);
             setManualJobs(sortedJobs);
             return sortedJobs;
         } catch (error) {
@@ -148,7 +184,7 @@ export function JobsList() {
 
     // We use useQuery from React Query for data fetching and caching
     const { data: jobs, isLoading, error } = useQuery({
-        queryKey: ['jobs', statusFilter, sortField, sortOrder, refreshTrigger],
+        queryKey: ['jobs', statusFilter, categoryFilter, dateRangeFilter, customStartDate, customEndDate, sortField, sortOrder, refreshTrigger],
         queryFn: fetchJobs,
         staleTime: 30000, // Consider data fresh for 30 seconds
     });
@@ -247,7 +283,8 @@ export function JobsList() {
                 </Alert>
             )}
 
-            <Box sx={{ display: 'flex', mb: 3, gap: 2 }}>
+            {/* Filter Controls */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
                 <FormControl variant="outlined" sx={{ minWidth: 200 }}>
                     <InputLabel id="status-filter-label">Filter by Status</InputLabel>
                     <Select
@@ -262,6 +299,60 @@ export function JobsList() {
                         <MenuItem value="closed">Closed</MenuItem>
                     </Select>
                 </FormControl>
+
+                <FormControl variant="outlined" sx={{ minWidth: 200 }}>
+                    <InputLabel id="category-filter-label">Filter by Category</InputLabel>
+                    <Select
+                        labelId="category-filter-label"
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        label="Filter by Category"
+                    >
+                        <MenuItem value="all">All Categories</MenuItem>
+                        {JOB_CATEGORIES.map((category) => (
+                            <MenuItem key={category.id} value={category.id}>
+                                {category.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                <FormControl variant="outlined" sx={{ minWidth: 200 }}>
+                    <InputLabel id="date-filter-label">Filter by Date</InputLabel>
+                    <Select
+                        labelId="date-filter-label"
+                        value={dateRangeFilter}
+                        onChange={(e) => setDateRangeFilter(e.target.value)}
+                        label="Filter by Date"
+                    >
+                        {DATE_RANGES.map((range) => (
+                            <MenuItem key={range.id} value={range.id}>
+                                {range.label}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                {dateRangeFilter === 'custom' && (
+                    <>
+                        <TextField
+                            label="Start Date"
+                            type="date"
+                            value={customStartDate}
+                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            InputLabelProps={{ shrink: true }}
+                            sx={{ minWidth: 150 }}
+                        />
+                        <TextField
+                            label="End Date"
+                            type="date"
+                            value={customEndDate}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            InputLabelProps={{ shrink: true }}
+                            sx={{ minWidth: 150 }}
+                        />
+                    </>
+                )}
             </Box>
 
             {/* Sorting options */}
@@ -317,6 +408,13 @@ export function JobsList() {
                             <Typography variant="body2" sx={{ mb: 1 }}>
                                 {job.location} • {job.company}
                             </Typography>
+
+                            {job.category && (
+                                <Typography variant="body2" sx={{ mb: 1 }}>
+                                    <strong>Category:</strong> {getCategoryById(job.category)?.name || job.category}
+                                    {job.subcategory && ` • ${job.subcategory}`}
+                                </Typography>
+                            )}
 
                             <Typography variant="body2" sx={{ mb: 2 }}>
                                 Created: {job.createdAt instanceof Date
