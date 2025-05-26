@@ -90,6 +90,22 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       
+      - name: Check deployment secrets
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
+            echo "⚠️ Firebase deployment secrets not configured. Skipping deployment."
+            echo "To enable deployment, configure the following secrets in GitHub repository settings:"
+            echo "- FIREBASE_API_KEY"
+            echo "- FIREBASE_AUTH_DOMAIN"
+            echo "- FIREBASE_PROJECT_ID"
+            echo "- FIREBASE_STORAGE_BUCKET"
+            echo "- FIREBASE_MESSAGING_SENDER_ID"
+            echo "- FIREBASE_APP_ID"
+            echo "- FIREBASE_SERVICE_ACCOUNT"
+            echo "- OPENAI_API_KEY"
+            exit 0
+          fi
+      
       - name: Install dependencies
         run: |
           cd frontend
