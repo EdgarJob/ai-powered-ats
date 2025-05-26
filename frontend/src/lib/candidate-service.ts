@@ -1,12 +1,12 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
   orderBy,
   deleteDoc,
   Timestamp,
@@ -56,27 +56,27 @@ export async function createCandidate(
 ): Promise<Candidate> {
   try {
     let resumeUrl;
-    
+
     // Upload resume if provided
     if (resumeFile && candidateData.userId) {
       const fileExt = resumeFile.name.split('.').pop();
       const filename = `${Date.now()}.${fileExt}`;
       const storagePath = `resumes/${candidateData.userId}/${filename}`;
       const storageRef = ref(storage, storagePath);
-      
+
       await uploadBytes(storageRef, resumeFile);
       resumeUrl = await getDownloadURL(storageRef);
     }
-    
+
     const newCandidate = {
       ...candidateData,
-      resumeUrl,
+      ...(resumeUrl && { resumeUrl }), // Only include resumeUrl if it has a value
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     const docRef = await addDoc(collection(db, 'candidates'), newCandidate);
-    
+
     return {
       id: docRef.id,
       ...newCandidate
@@ -92,7 +92,7 @@ export async function getCandidate(candidateId: string): Promise<Candidate | nul
   try {
     const docRef = doc(db, 'candidates', candidateId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data();
       return {
@@ -102,7 +102,7 @@ export async function getCandidate(candidateId: string): Promise<Candidate | nul
         updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt
       } as Candidate;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error getting candidate:', error);
@@ -118,21 +118,21 @@ export async function getCandidates(options: {
   try {
     const candidatesQuery = collection(db, 'candidates');
     const constraints = [];
-    
+
     if (options.userId) {
       constraints.push(where('userId', '==', options.userId));
     }
-    
+
     // Always sort by creation date, descending
     constraints.push(orderBy('createdAt', 'desc'));
-    
+
     if (options.limit) {
       constraints.push(limit(options.limit));
     }
-    
+
     const q = query(candidatesQuery, ...constraints);
     const querySnapshot = await getDocs(q);
-    
+
     const candidates: Candidate[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
@@ -143,7 +143,7 @@ export async function getCandidates(options: {
         updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt
       } as Candidate);
     });
-    
+
     return candidates;
   } catch (error) {
     console.error('Error getting candidates:', error);
@@ -153,21 +153,21 @@ export async function getCandidates(options: {
 
 // Update a candidate profile
 export async function updateCandidate(
-  candidateId: string, 
+  candidateId: string,
   candidateData: Partial<Omit<Candidate, 'id' | 'createdAt' | 'userId'>>,
   resumeFile?: File
 ): Promise<Candidate> {
   try {
     const candidateRef = doc(db, 'candidates', candidateId);
-    
+
     // Get current candidate to get userId
     const currentCandidate = await getCandidate(candidateId);
     if (!currentCandidate) {
       throw new Error(`Candidate with ID ${candidateId} not found`);
     }
-    
+
     let resumeUrl = candidateData.resumeUrl;
-    
+
     // Upload new resume if provided
     if (resumeFile && currentCandidate.userId) {
       // Delete old resume if exists
@@ -179,30 +179,30 @@ export async function updateCandidate(
           console.warn('Could not delete old resume, it may not exist:', error);
         }
       }
-      
+
       const fileExt = resumeFile.name.split('.').pop();
       const filename = `${Date.now()}.${fileExt}`;
       const storagePath = `resumes/${currentCandidate.userId}/${filename}`;
       const storageRef = ref(storage, storagePath);
-      
+
       await uploadBytes(storageRef, resumeFile);
       resumeUrl = await getDownloadURL(storageRef);
     }
-    
+
     const updateData = {
       ...candidateData,
-      resumeUrl,
+      ...(resumeUrl && { resumeUrl }), // Only include resumeUrl if it has a value
       updatedAt: new Date()
     };
-    
+
     await updateDoc(candidateRef, updateData);
-    
+
     // Get the updated candidate
     const updatedCandidate = await getCandidate(candidateId);
     if (!updatedCandidate) {
       throw new Error(`Candidate with ID ${candidateId} not found after update`);
     }
-    
+
     return updatedCandidate;
   } catch (error) {
     console.error('Error updating candidate:', error);
@@ -212,8 +212,8 @@ export async function updateCandidate(
 
 // Create a job application
 export async function createJobApplication(
-  candidateId: string, 
-  jobId: string, 
+  candidateId: string,
+  jobId: string,
   applicationData: Partial<Omit<JobApplication, 'id' | 'candidateId' | 'jobId' | 'createdAt' | 'updatedAt'>> = {}
 ): Promise<JobApplication> {
   try {
@@ -226,9 +226,9 @@ export async function createJobApplication(
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     const docRef = await addDoc(collection(db, 'applications'), newApplication);
-    
+
     return {
       id: docRef.id,
       ...newApplication
@@ -247,9 +247,9 @@ export async function getJobApplicationsForCandidate(candidateId: string): Promi
       where('candidateId', '==', candidateId),
       orderBy('createdAt', 'desc')
     );
-    
+
     const querySnapshot = await getDocs(applicationsQuery);
-    
+
     const applications: JobApplication[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
@@ -260,7 +260,7 @@ export async function getJobApplicationsForCandidate(candidateId: string): Promi
         updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt
       } as JobApplication);
     });
-    
+
     return applications;
   } catch (error) {
     console.error('Error getting job applications:', error);
@@ -269,18 +269,18 @@ export async function getJobApplicationsForCandidate(candidateId: string): Promi
 }
 
 // Get candidates for a specific job
-export async function getCandidatesForJob(jobId: string): Promise<{candidate: Candidate, application: JobApplication}[]> {
+export async function getCandidatesForJob(jobId: string): Promise<{ candidate: Candidate, application: JobApplication }[]> {
   try {
     const applicationsQuery = query(
       collection(db, 'applications'),
       where('jobId', '==', jobId),
       orderBy('createdAt', 'desc')
     );
-    
+
     const querySnapshot = await getDocs(applicationsQuery);
-    
-    const results: {candidate: Candidate, application: JobApplication}[] = [];
-    
+
+    const results: { candidate: Candidate, application: JobApplication }[] = [];
+
     for (const appDoc of querySnapshot.docs) {
       const appData = appDoc.data();
       const application = {
@@ -289,14 +289,14 @@ export async function getCandidatesForJob(jobId: string): Promise<{candidate: Ca
         createdAt: appData.createdAt instanceof Timestamp ? appData.createdAt.toDate() : appData.createdAt,
         updatedAt: appData.updatedAt instanceof Timestamp ? appData.updatedAt.toDate() : appData.updatedAt
       } as JobApplication;
-      
+
       // Get the candidate data
       const candidate = await getCandidate(application.candidateId);
       if (candidate) {
         results.push({ candidate, application });
       }
     }
-    
+
     return results;
   } catch (error) {
     console.error('Error getting candidates for job:', error);

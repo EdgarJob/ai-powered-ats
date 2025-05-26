@@ -3,6 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react
 import { signIn } from './lib/auth-service';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import SignupPage from './components/SignupPage';
+import { Dashboard } from './components/Dashboard';
+import { JobsList } from './components/JobsList';
+import { CandidatesList } from './components/CandidatesList';
+import { AIMatchingPage } from './components/AIMatchingPage';
+import { DatabaseTester } from './components/DatabaseTester';
 
 function App() {
     console.log(import.meta.env);
@@ -55,6 +60,12 @@ function AppContent() {
                                             <Link to="/candidates" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                                                 Candidates
                                             </Link>
+                                            <Link to="/ai-matching" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                                                AI Matching
+                                            </Link>
+                                            <Link to="/database-test" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                                                DB Test
+                                            </Link>
                                             <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
                                                 Admin
                                             </span>
@@ -85,9 +96,11 @@ function AppContent() {
             <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
                 <Routes>
                     <Route path="/" element={<HomePage />} />
-                    <Route path="/dashboard" element={<DashboardPage />} />
-                    <Route path="/jobs" element={<JobsPage />} />
-                    <Route path="/candidates" element={<CandidatesPage />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/jobs" element={<JobsList />} />
+                    <Route path="/candidates" element={<CandidatesList />} />
+                    <Route path="/ai-matching" element={<AIMatchingPage />} />
+                    <Route path="/database-test" element={<DatabaseTester />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
                 </Routes>
