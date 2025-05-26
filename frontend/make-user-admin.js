@@ -7,16 +7,21 @@ import { getFirestore, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore
 
 // Your real Firebase configuration (from .env file)
 const firebaseConfig = {
-    apiKey: process.env.VITE_FIREBASE_API_KEY || "AIzaSyCqVdBaTbiEFq5Oq1kgNlDTkRHalf_usvo",
-    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || "ai-powered-ats-e019d.firebaseapp.com",
-    projectId: process.env.VITE_FIREBASE_PROJECT_ID || "ai-powered-ats-e019d",
-    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || "ai-powered-ats-e019d.firebasestorage.app",
-    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "52303267038",
-    appId: process.env.VITE_FIREBASE_APP_ID || "1:52303267038:web:79ed7f49c34565cb922e4f"
+    apiKey: process.env.VITE_FIREBASE_API_KEY,
+    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.VITE_FIREBASE_APP_ID
 };
 
 async function makeUserAdmin() {
     try {
+        // Check if all required environment variables are present
+        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+            throw new Error('Missing required Firebase environment variables. Please check your .env file.');
+        }
+
         // Initialize Firebase (connects to real Firebase, not emulators)
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -76,6 +81,7 @@ async function makeUserAdmin() {
         console.log('1. Have the correct user ID');
         console.log('2. Are connected to the internet');
         console.log('3. Have proper Firebase permissions');
+        console.log('4. Have all required environment variables in your .env file');
     }
 }
 
